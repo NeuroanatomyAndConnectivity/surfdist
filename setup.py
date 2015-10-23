@@ -7,7 +7,7 @@ setup(
   author = 'Daniel Margulies',
   author_email = 'margulies@cbs.mpg.de',
   url = 'https://github.com/margulies/surfdist',
-  download_url = 'https://github.com/peterldowns/mypackage/tarball/0.1',
+  download_url = 'https://github.com/margulies/surfdist/tarball/0.1',
   keywords = ['geodesic', 'distance', 'brain', 'cortex'],
   classifiers = [],
 )
