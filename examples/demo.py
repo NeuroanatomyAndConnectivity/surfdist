@@ -10,7 +10,7 @@ surf = nib.freesurfer.read_geometry(os.path.join(base_dir, 'surf/lh.pial'))
 cort = np.sort(nib.freesurfer.read_label(os.path.join(base_dir, 'label/lh.cortex.label')))
 
 # load central sulcus nodes
-src  = sd.load.load_freesurfer_label(os.path.join(base_dir, 'label/lh.aparc.a2009s.annot'), 'S_central')
+src  = sd.load.load_freesurfer_label(os.path.join(base_dir, 'label/lh.aparc.a2009s.annot'), 'S_central', cort)
 
 # calculate distance
 dist = sd.surfdist.dist_calc(surf, cort, src)
