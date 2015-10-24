@@ -1,22 +1,30 @@
 import nibabel as nib
 import numpy as np
 import os
-from mayavi import mlab
-import surfdist.surfdist as sd
+import surfdist as sd
 
-base_dir = '/Applications/freesurfer/subjects/fsaverage4/'
-
+# calculate and display distance from central sulcus at each node:
+base_dir = '/Applications/freesurfer/subjects/bert/'
 surf = nib.freesurfer.read_geometry(os.path.join(base_dir, 'surf/lh.pial'))
 cort = np.sort(nib.freesurfer.read_label(os.path.join(base_dir, 'label/lh.cortex.label')))
-annot = nib.freesurfer.read_annot(os.path.join(base_dir, 'label/lh.aparc.a2009s.annot'))
+src  = sd.load.load_freesurfer_label(os.path.join(base_dir, 'label/lh.aparc.a2009s.annot'), 'S_central')
 
-# Calculate geodesic distance from central sulcus:
-label_text = 'S_central'
-label_ind = annot[2].index(label_text)
-labels = np.where(np.in1d(annot[0],label_ind))
-labels = np.where(np.in1d(cort, labels))[0]
-src = np.array(labels, dtype=np.int32)
+dist = sd.surfdist.dist_calc(surf, cort, src)
+sd.viz.viz(surf, dist)
 
-dist = sd.dist_calc(surf, cort, src)
-data = sd.recort(dist, surf, cort)
-sd.viz(surf, data)
+# Calculate distances on native surface and display on fsaverage
+fsa4 = nib.freesurfer.read_geometry('/Applications/freesurfer/subjects/fsaverage4/surf/lh.sphere.reg')[0]
+native = nib.freesurfer.read_geometry('/Applications/freesurfer/subjects/bert/surf/lh.sphere.reg')[0]
+idx_fsa4_to_native = sd.utils.find_node_match(fsa4, native)[0]
+
+surf_fsa4 = nib.freesurfer.read_geometry('/Applications/freesurfer/subjects/fsaverage4/surf/lh.pial')
+sd.viz.viz(surf_fsa4, dist[idx_fsa4_to_native])
+
+
+src = [10001, 50]
+dist_vals = np.zeros((len(src),len(vertices)))
+for x in range(len(src)):
+    dist_vals[x,:] = gdist.compute_gdist(vertices, triangles, 
+                        source_indices=np.array([src[x]], dtype=np.int32))
+
+zone = np.argsort(dist_vals, axis=0)[-1,:]
