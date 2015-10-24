@@ -6,7 +6,7 @@ setup(
                       'mayavi',                        
                       'gdist', 
                       'nibabel',
-                      'os',
+                      'os>=10.1',
                       'scipy'],
   version = '0.13.1',
   description = 'For calculating exact geodesic distances on cortical surface meshes',
