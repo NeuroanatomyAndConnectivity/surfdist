@@ -1,6 +1,5 @@
 import nibabel as nib
 import numpy as np
-import os
 
 
 def load_freesurfer_label(annot_input, label_name):
@@ -22,6 +21,6 @@ def get_freesurfer_label(annot_input, label_name):
 	"""
 	Print freesurfer label names.
 	"""
-    annot = nib.freesurfer.read_annot(annot_input)
-    print annot[2]
+	annot = nib.freesurfer.read_annot(annot_input)
+	print annot[2]
 
