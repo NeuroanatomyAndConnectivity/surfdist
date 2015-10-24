@@ -1,7 +1,7 @@
 from distutils.core import setup
 setup(
   name = 'surfdist',
-  packages = ['surfdist/surfdist'],
+  packages = ['surfdist'],
   install_requires = ['numpy',                                              
                       'mayavi',                        
                       'gdist'],
