@@ -1,3 +1,5 @@
+import numpy as np
+
 def viz(surf, data):
     """
     Visualize results on cortical surace using mayavi.
