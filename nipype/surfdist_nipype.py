@@ -117,7 +117,7 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(fss,'annot',tannot,'itemz')
 
   # Calculate distances for each hemi
-  sdist = Node(Function(input_names=['surface','labels','annot','reg','origin','target'],
+  sdist = MapNode(Function(input_names=['surface','labels','annot','reg','origin','target'],
                         output_names=['distances'], function=calc_surfdist), 
                         iterfield = ['surface','labels','annot','reg'],name='sdist')
   sd.connect(infosource,'source',sdist,'origin')
