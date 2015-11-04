@@ -97,30 +97,29 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(infosource,'hemi',fsst,'hemi')
 
   # Get subjects
-  fss = Node(FreeSurferSource(),iterfield='subject_id',name='FS_Source')
-  fss.iterables = ('subject_id', subject_list)
+  fss = MapNode(FreeSurferSource(),iterfield='subject_id',name='FS_Source')
   fss.inputs.subjects_dir = subjects_dir
 
   sd.connect(infosource,'hemi',fss,'hemi')
 
   # Trim labels
-  tlab = Node(Function(input_names=['itemz','phrase'],
+  tlab = MapNode(Function(input_names=['itemz','phrase'],
                         output_names=['item'], function=trimming),
-                        name='tlab')
+                        iterfield = 'itemz', name='tlab')
   tlab.inputs.phrase = labs
   sd.connect(fss,'label',tlab,'itemz')
 
   # Trim annotations
-  tannot = Node(Function(input_names=['itemz','phrase'],
+  tannot = MapNode(Function(input_names=['itemz','phrase'],
                         output_names=['item'], function=trimming),
-                        name='tannot')
+                        interfield = 'itemz', name='tannot')
   tannot.inputs.phrase = atlas
   sd.connect(fss,'annot',tannot,'itemz')
 
   # Calculate distances for each hemi
   sdist = Node(Function(input_names=['surface','labels','annot','reg','origin','target'],
                         output_names=['distances'], function=calc_surfdist), 
-                        name='sdist')
+                        iterfield = ['surface','labels','annot','reg'],name='sdist')
   sd.connect(infosource,'source',sdist,'origin')
   sd.connect(fss,'pial',sdist,'surface')
   sd.connect(tlab,'item',sdist,'labels')
@@ -129,8 +128,8 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(fsst,'sphere_reg',sdist,'target')
   
   # Gather data for each hemi from all subjects
-  bucket = JoinNode(Function(input_names=['files','hemi','source','target'],output_names=['group_dist'], 
-                         function=stack_files), joinsource = 'fss', joinfield = 'files', name='bucket')
+  bucket = Node(Function(input_names=['files','hemi','source','target'],output_names=['group_dist'], 
+                         function=stack_files), name='bucket')
   sd.connect(infosource,'source',bucket,'source')
   sd.connect(infosource,'template',bucket,'target')
   sd.connect(infosource,'hemi',bucket,'hemi')
