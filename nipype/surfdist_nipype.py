@@ -99,6 +99,7 @@ def create_surfdist_workflow(subjects_dir,
   # Get subjects
   fss = MapNode(FreeSurferSource(),iterfield='subject_id',name='FS_Source')
   fss.inputs.subjects_dir = subjects_dir
+  fss.inputs.subject_id = subject_list
 
   sd.connect(infosource,'hemi',fss,'hemi')
 
