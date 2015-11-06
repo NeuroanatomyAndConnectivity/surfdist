@@ -112,7 +112,7 @@ def create_surfdist_workflow(subjects_dir,
   # Trim annotations
   tannot = MapNode(Function(input_names=['itemz','phrase'],
                         output_names=['item'], function=trimming),
-                        interfield = 'itemz', name='tannot')
+                        iterfield = 'itemz', name='tannot')
   tannot.inputs.phrase = atlas
   sd.connect(fss,'annot',tannot,'itemz')
 
