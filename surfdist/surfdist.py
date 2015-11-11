@@ -6,10 +6,11 @@ def dist_calc(surf, cortex, src):
     Calculate exact geodesic distance along cortical surface from set of source nodes.
     """
     import gdist
-    from utils import surf_keep_cortex, recort
+    from utils import surf_keep_cortex, translate_src, recort
 
     vertices, triangles = surf_keep_cortex(surf, cortex)
-    data = gdist.compute_gdist(vertices, triangles, source_indices=src)
+    src_new = translate_src(src, cortex)
+    data = gdist.compute_gdist(vertices, triangles, source_indices=src_new)
     dist = recort(data, surf, cortex)
     del data
 
