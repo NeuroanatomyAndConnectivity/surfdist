@@ -29,7 +29,7 @@ def translate_src(src, cortex):
             if i == j:
                 src_new.append(c)
 
-    return src_new
+    return np.array(src_new, dtype=np.int32)
 
 
 def recort(input_data, surf, cortex):
