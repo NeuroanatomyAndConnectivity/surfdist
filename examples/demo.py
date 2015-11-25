@@ -7,8 +7,7 @@ from surfdist import viz, load, utils, surfdist
 
 # calculate and display distance from central sulcus at each node:
 cmap='coolwarm'
-#base_dir = '/Applications/freesurfer/subjects/'
-base_dir = '/afs/cbs.mpg.de/software/freesurfer/5.3.0/ubuntu-precise-amd64/subjects/'
+base_dir = '/Applications/freesurfer/subjects/'
 surf = nib.freesurfer.read_geometry(os.path.join(base_dir, 'bert/surf/lh.pial'))
 cort = np.sort(nib.freesurfer.read_label(os.path.join(base_dir, 'bert/label/lh.cortex.label')))
 sulc=nib.freesurfer.read_morph_data(os.path.join(base_dir, 'bert/surf/lh.sulc'))
