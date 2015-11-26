@@ -16,7 +16,7 @@ def load_freesurfer_label(annot_input, label_name, cortex):
     return src
 
 
-def get_freesurfer_label(annot_input, label_name):
+def get_freesurfer_label(annot_input):
     """
     Print freesurfer label names.
     """
