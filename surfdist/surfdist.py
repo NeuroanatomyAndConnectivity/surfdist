@@ -9,7 +9,8 @@ def dist_calc(surf, cortex, src):
     from utils import surf_keep_cortex, translate_src, recort
 
     vertices, triangles = surf_keep_cortex(surf, cortex)
-    data = gdist.compute_gdist(vertices, triangles, source_indices=src)
+    src_new = translate_src(src, cortex)
+    data = gdist.compute_gdist(vertices, triangles, source_indices=src_new)
     dist = recort(data, surf, cortex)
     del data
 
@@ -28,7 +29,8 @@ def zone_calc(surf, cortex, src):
     dist_vals = np.zeros((len(src), len(vertices)))
 
     for x in range(len(src)):
-        dist_vals[x, :] = gdist.compute_gdist(vertices, triangles, source_indices=src[x])
+        src_new = translate_src(src[x], cortex)
+        dist_vals[x, :] = gdist.compute_gdist(vertices, triangles, source_indices=src_new)
 
     data = np.argsort(dist_vals, axis=0)[0, :] + 1
 
