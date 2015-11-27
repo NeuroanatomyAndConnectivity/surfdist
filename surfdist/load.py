@@ -11,13 +11,12 @@ def load_freesurfer_label(annot_input, label_name, cortex):
     label_text = label_name
     label_ind = annot[2].index(label_text)
     labels = np.where(np.in1d(annot[0], label_ind))
-    labels = np.where(np.in1d(cortex, labels))[0]
     src = np.array(labels, dtype=np.int32)
 
     return src
 
 
-def get_freesurfer_label(annot_input, label_name):
+def get_freesurfer_label(annot_input):
     """
     Print freesurfer label names.
     """
