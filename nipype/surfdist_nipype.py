@@ -97,7 +97,7 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(infosource,'hemi',fsst,'hemi')
 
   # Get subjects
-  fss = Node(FreeSurferSource(),iterfield='subject_id',name='FS_Source')
+  fss = Node(FreeSurferSource(),name='FS_Source')
   fss.iterables = ('subject_id', subject_list)
   fss.inputs.subjects_dir = subjects_dir
 
@@ -130,7 +130,7 @@ def create_surfdist_workflow(subjects_dir,
   
   # Gather data for each hemi from all subjects
   bucket = JoinNode(Function(input_names=['files','hemi','source','target'],output_names=['group_dist'], 
-                         function=stack_files), joinsource = 'fss', joinfield = 'files', name='bucket')
+                         function=stack_files), joinsource = fss, joinfield = 'files', name='bucket')
   sd.connect(infosource,'source',bucket,'source')
   sd.connect(infosource,'template',bucket,'target')
   sd.connect(infosource,'hemi',bucket,'hemi')
@@ -193,7 +193,7 @@ subjects. This table can be used for permutation testing in PALM.''',
                         default=['S_central'], 
                         help="Label(s) to calculate distances from" + defstr)
     parser.add_argument("-hemi", "--hemi", dest="hemi", nargs = "+",
-                        default=['lh','rh'],
+                        default=['lh'],
                         help="Hemisphere(s) for distance calculation" + defstr)
     parser.add_argument("-o", "--output_dir", dest="sink",
                         help="Output directory base")
