@@ -1,15 +1,47 @@
 def viz(coords, faces, stat_map=None,
-        elev=0, azim=0,
-        cmap='coolwarm',
-        threshold=None, bg_map=None,
-        bg_on_stat=False,
-        alpha='auto',
-        vmax=None, symmetric_cbar="auto",
+        elev=0, azim=0, cmap='coolwarm',
+        threshold=None, alpha='auto',
+        bg_map=None, bg_on_stat=False,
         figsize=None,
         **kwargs):
-    
-    ''' Visualize results on cortical surface using matplotlib'''
-    
+
+    ''' Visualize results on cortical surface using matplotlib.
+
+    Inputs
+    -------
+    coords : numpy array of shape (n_nodes,3), each row specifying the x,y,z
+            coordinates of one node of surface mesh
+    faces : numpy array of shape (n_faces, 3), each row specifying the indices
+            of the three nodes building one node of the surface mesh
+    stat_map : numpy array of shape (n_nodes,) containing the values to be
+               visualized for each node.
+    elev, azim : integers, elevation and azimuth parameters specifying the view
+                 on the 3D plot. For Freesurfer surfaces elev=0, azim=0 will
+                 give a lateral view for the right and a medial view for the
+                 left hemisphere, elev=0, azim=180 will give a medial view for
+                 the right and lateral view for the left hemisphere.
+    cmap : Matplotlib colormap, the color range will me forced to be symmetric.
+           Colormaps can be specified as string or colormap object.
+    threshold : float, threshold to be applied to the map, will be applied in
+                positive and negative direction, i.e. values < -abs(threshold)
+                and > abs(threshold) will be shown.
+    alpha : float, determines the opacity of the background mesh, in'auto' mode
+            alpha defaults to .5 when no background map is given, to 1 otherwise.
+    bg_map : numpy array of shape (n_nodes,) to be plotted underneath the
+             statistical map. Specifying a sulcal depth map as bg_map results
+             in realistic shadowing of the surface.
+    bg_on_stat : boolean, specifies whether the statistical map should be
+                 multiplied with the background map for shadowing. Otherwise,
+                 only areas that are not covered by the statsitical map after
+                 thresholding will show shadows.
+    figsize : tuple of intergers, dimensions of the figure that is produced.
+
+
+    Output
+    ------
+    Matplotlib figure object
+    '''
+
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib.tri as tri
@@ -70,11 +102,10 @@ def viz(coords, faces, stat_map=None,
             stat_map_data = stat_map
             stat_map_faces = np.mean(stat_map_data[faces], axis=1)
 
-            # Call _get_plot_stat_map_params to derive symmetric vmin and vmax
-            # And colorbar limits depending on symmetric_cbar settings
-            cbar_vmin, cbar_vmax, vmin, vmax = \
-                _get_plot_stat_map_params(stat_map_faces, vmax,
-                                          symmetric_cbar, kwargs)
+            # Ensure symmetric colour range, based on Nilearn helper function:
+            # https://github.com/nilearn/nilearn/blob/master/nilearn/plotting/img_plotting.py#L52
+            vmax = max(-np.nanmin(stat_map_faces), np.nanmax(stat_map_faces))
+            vmin = -vmax
 
             if threshold is not None:
                 kept_indices = np.where(abs(stat_map_faces) >= threshold)[0]
@@ -95,49 +126,3 @@ def viz(coords, faces, stat_map=None,
         p3dcollec.set_facecolors(face_colors)
 
     return fig
-
-
-def _get_plot_stat_map_params(stat_map_data, vmax, symmetric_cbar, kwargs,
-    force_min_stat_map_value=None):
-    import numpy as np
-    
-    ''' 
-    Helper function copied from nilearn to force symmetric colormaps
-    https://github.com/nilearn/nilearn/blob/master/nilearn/plotting/img_plotting.py#L52
-    '''
-    # make sure that the color range is symmetrical
-    if vmax is None or symmetric_cbar in ['auto', False]:
-        # Avoid dealing with masked_array:
-        if hasattr(stat_map_data, '_mask'):
-            stat_map_data = np.asarray(
-                    stat_map_data[np.logical_not(stat_map_data._mask)])
-        stat_map_max = np.nanmax(stat_map_data)
-        if force_min_stat_map_value == None:
-            stat_map_min = np.nanmin(stat_map_data)
-        else:
-            stat_map_min = force_min_stat_map_value
-    if symmetric_cbar == 'auto':
-        symmetric_cbar = stat_map_min < 0 and stat_map_max > 0
-    if vmax is None:
-        vmax = max(-stat_map_min, stat_map_max)
-    if 'vmin' in kwargs:
-        raise ValueError('this function does not accept a "vmin" '
-            'argument, as it uses a symmetrical range '
-            'defined via the vmax argument. To threshold '
-            'the map, use the "threshold" argument')
-    vmin = -vmax
-    if not symmetric_cbar:
-        negative_range = stat_map_max <= 0
-        positive_range = stat_map_min >= 0
-        if positive_range:
-            cbar_vmin = 0
-            cbar_vmax = None
-        elif negative_range:
-            cbar_vmax = 0
-            cbar_vmin = None
-        else:
-            cbar_vmin = stat_map_min
-            cbar_vmax = stat_map_max
-    else:
-        cbar_vmin, cbar_vmax = None, None
-    return cbar_vmin, cbar_vmax, vmin, vmax
