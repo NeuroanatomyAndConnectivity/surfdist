@@ -13,6 +13,9 @@ def trimming(itemz, phrase):
   item = [x for x in itemz if phrase in x][0]
   return item
 
+def genfname(hemi, source, target):
+  fname = hemi + '_' + source + '_' + target
+  return fname
 
 def calc_surfdist(surface, labels, annot, reg, origin, target):
   import nibabel as nib
@@ -96,31 +99,40 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(infosource,'template',fsst,'subject_id')
   sd.connect(infosource,'hemi',fsst,'hemi')
 
+  # Generate folder name for output
+  genfoldname = Node(Function(input_names=['hemi','source','target'],
+                      output_names=['cname'], function=genfname),
+                      name='genfoldname')
+  sd.connect(infosource,'hemi',genfoldname,'hemi')
+  sd.connect(infosource,'source',genfoldname,'source')
+  sd.connect(infosource,'template',genfoldname,'target')
+
   # Get subjects
-  fss = MapNode(FreeSurferSource(),iterfield='subject_id',name='FS_Source')
+  fss = Node(FreeSurferSource(),name='FS_Source')
+  fss.iterables = ('subject_id', subject_list)
   fss.inputs.subjects_dir = subjects_dir
   fss.inputs.subject_id = subject_list
 
   sd.connect(infosource,'hemi',fss,'hemi')
 
   # Trim labels
-  tlab = MapNode(Function(input_names=['itemz','phrase'],
+  tlab = Node(Function(input_names=['itemz','phrase'],
                         output_names=['item'], function=trimming),
-                        iterfield = 'itemz', name='tlab')
+                        name='tlab')
   tlab.inputs.phrase = labs
   sd.connect(fss,'label',tlab,'itemz')
 
   # Trim annotations
-  tannot = MapNode(Function(input_names=['itemz','phrase'],
+  tannot = Node(Function(input_names=['itemz','phrase'],
                         output_names=['item'], function=trimming),
-                        iterfield = 'itemz', name='tannot')
+                        name='tannot')
   tannot.inputs.phrase = atlas
   sd.connect(fss,'annot',tannot,'itemz')
 
   # Calculate distances for each hemi
-  sdist = MapNode(Function(input_names=['surface','labels','annot','reg','origin','target'],
+  sdist = Node(Function(input_names=['surface','labels','annot','reg','origin','target'],
                         output_names=['distances'], function=calc_surfdist), 
-                        iterfield = ['surface','labels','annot','reg'],name='sdist')
+                        name='sdist')
   sd.connect(infosource,'source',sdist,'origin')
   sd.connect(fss,'pial',sdist,'surface')
   sd.connect(tlab,'item',sdist,'labels')
@@ -129,17 +141,18 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(fsst,'sphere_reg',sdist,'target')
   
   # Gather data for each hemi from all subjects
-  bucket = Node(Function(input_names=['files','hemi','source','target'],output_names=['group_dist'], 
-                         function=stack_files), name='bucket')
+  bucket = JoinNode(Function(input_names=['files','hemi','source','target'],output_names=['group_dist'], 
+                         function=stack_files), joinsource = fss, joinfield = 'files', name='bucket')
   sd.connect(infosource,'source',bucket,'source')
   sd.connect(infosource,'template',bucket,'target')
   sd.connect(infosource,'hemi',bucket,'hemi')
   sd.connect(sdist,'distances',bucket,'files')
 
   # Sink the data
-  datasink = Node(DataSink(parametrization=False), name='sinker')
-  datasink.inputs.base_directory = os.getcwd()
-  sd.connect(infosource,'hemi',datasink,'container')
+  datasink = Node(DataSink(), name='sinker')
+  datasink.inputs.parameterization = False
+  datasink.inputs.base_directory = os.path.abspath(args.sink)
+  sd.connect(genfoldname,'cname',datasink,'container')
   sd.connect(bucket,'group_dist',datasink,'group_distances')
 
   return sd
@@ -196,6 +209,7 @@ subjects. This table can be used for permutation testing in PALM.''',
                         default=['lh','rh'],
                         help="Hemisphere(s) for distance calculation" + defstr)
     parser.add_argument("-o", "--output_dir", dest="sink",
+                        default=os.path.join(os.getcwd(),'geodesic_distances'),
                         help="Output directory base")
     parser.add_argument("-w", "--work_dir", dest="work_dir",
                         help="Output directory base")
@@ -220,5 +234,4 @@ if args.plugin_args:
 else:
   wf.run(args.plugin)
 
-#wf.write_graph(dotfilename='func_preproc.dot', graph2use='exec', format='pdf', simple_form=False)
-
+wf.write_graph(dotfilename='func_preproc.dot', graph2use='exec', format='pdf', simple_form=False)
