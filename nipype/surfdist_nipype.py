@@ -111,6 +111,7 @@ def create_surfdist_workflow(subjects_dir,
   fss = Node(FreeSurferSource(),name='FS_Source')
   fss.iterables = ('subject_id', subject_list)
   fss.inputs.subjects_dir = subjects_dir
+  fss.inputs.subject_id = subject_list
 
   sd.connect(infosource,'hemi',fss,'hemi')
 
@@ -149,7 +150,7 @@ def create_surfdist_workflow(subjects_dir,
 
   # Sink the data
   datasink = Node(DataSink(), name='sinker')
-  datasink.inputs.parameterization = True
+  datasink.inputs.parameterization = False
   datasink.inputs.base_directory = os.path.abspath(args.sink)
   sd.connect(genfoldname,'cname',datasink,'container')
   sd.connect(bucket,'group_dist',datasink,'group_distances')

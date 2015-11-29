@@ -11,11 +11,21 @@ def surf_keep_cortex(surf, cortex):
     for i in [0, 1, 2]:
         keep += np.array([item in cortex for item in surf[1][:, i]])
     ind = np.where(keep == 3)
+    triangles_old = np.array(surf[1][ind], dtype=np.int32)
     triangles = np.array(surf[1][ind], dtype=np.int32)
     for c, i in enumerate(cortex):
-        triangles[np.where(triangles == i)] = c
+        triangles[np.where(triangles_old == i)] = c
 
     return vertices, triangles
+
+
+def translate_src(src, cortex):
+    """
+    Convert source nodes to new surface (without medial wall).
+    """
+    src_new = np.array(np.where(np.in1d(cortex, src))[0], dtype=np.int32)
+
+    return src_new
 
 
 def recort(input_data, surf, cortex):
@@ -29,7 +39,7 @@ def recort(input_data, surf, cortex):
 
 def find_node_match(simple_vertices, complex_vertices):
     '''
-    Thanks to juhuntenburg. 
+    Thanks to juhuntenburg.
     Functions taken from https://github.com/juhuntenburg/brainsurfacescripts
 
     Finds those points on the complex mesh that correspoind best to the
