@@ -13,6 +13,9 @@ def trimming(itemz, phrase):
   item = [x for x in itemz if phrase in x][0]
   return item
 
+def genfname(hemi, source, target):
+  fname = hemi + '_' + source + '_' + target
+  return fname
 
 def calc_surfdist(surface, labels, annot, reg, origin, target):
   import nibabel as nib
@@ -96,6 +99,14 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(infosource,'template',fsst,'subject_id')
   sd.connect(infosource,'hemi',fsst,'hemi')
 
+  # Generate folder name for output
+  genfoldname = Node(Function(input_names=['hemi','source','target'],
+                      output_names=['cname'], function=genfname),
+                      name='genfoldname')
+  sd.connect(infosource,'hemi',genfoldname,'hemi')
+  sd.connect(infosource,'source',genfoldname,'source')
+  sd.connect(infosource,'template',genfoldname,'target')
+
   # Get subjects
   fss = Node(FreeSurferSource(),name='FS_Source')
   fss.iterables = ('subject_id', subject_list)
@@ -137,9 +148,10 @@ def create_surfdist_workflow(subjects_dir,
   sd.connect(sdist,'distances',bucket,'files')
 
   # Sink the data
-  datasink = Node(DataSink(parametrization=False), name='sinker')
-  datasink.inputs.base_directory = os.getcwd()
-  sd.connect(infosource,'hemi',datasink,'container')
+  datasink = Node(DataSink(), name='sinker')
+  datasink.inputs.parameterization = True
+  datasink.inputs.base_directory = os.path.abspath(args.sink)
+  sd.connect(genfoldname,'cname',datasink,'container')
   sd.connect(bucket,'group_dist',datasink,'group_distances')
 
   return sd
@@ -193,9 +205,10 @@ subjects. This table can be used for permutation testing in PALM.''',
                         default=['S_central'], 
                         help="Label(s) to calculate distances from" + defstr)
     parser.add_argument("-hemi", "--hemi", dest="hemi", nargs = "+",
-                        default=['lh'],
+                        default=['lh','rh'],
                         help="Hemisphere(s) for distance calculation" + defstr)
     parser.add_argument("-o", "--output_dir", dest="sink",
+                        default=os.path.join(os.getcwd(),'geodesic_distances'),
                         help="Output directory base")
     parser.add_argument("-w", "--work_dir", dest="work_dir",
                         help="Output directory base")
@@ -220,4 +233,4 @@ if args.plugin_args:
 else:
   wf.run(args.plugin)
 
-#wf.write_graph(dotfilename='func_preproc.dot', graph2use='exec', format='pdf', simple_form=False)
+wf.write_graph(dotfilename='func_preproc.dot', graph2use='exec', format='pdf', simple_form=False)
