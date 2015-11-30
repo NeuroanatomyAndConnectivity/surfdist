@@ -20,7 +20,8 @@ def viz(coords, faces, stat_map=None,
                  give a lateral view for the right and a medial view for the
                  left hemisphere, elev=0, azim=180 will give a medial view for
                  the right and lateral view for the left hemisphere.
-    cmap : Matplotlib colormap, can be specified as string or colormap object.
+    cmap : Matplotlib colormap, the color range will me forced to be symmetric.
+           Colormaps can be specified as string or colormap object.
     threshold : float, threshold to be applied to the map, will be applied in
                 positive and negative direction, i.e. values < -abs(threshold)
                 and > abs(threshold) will be shown.
@@ -101,8 +102,10 @@ def viz(coords, faces, stat_map=None,
             stat_map_data = stat_map
             stat_map_faces = np.mean(stat_map_data[faces], axis=1)
 
-            vmax = np.nanmax(stat_map_faces)
-            vmin = np.nanmin(stat_map_faces)
+            # Ensure symmetric colour range, based on Nilearn helper function:
+            # https://github.com/nilearn/nilearn/blob/master/nilearn/plotting/img_plotting.py#L52
+            vmax = max(-np.nanmin(stat_map_faces), np.nanmax(stat_map_faces))
+            vmin = -vmax
 
             if threshold is not None:
                 kept_indices = np.where(abs(stat_map_faces) >= threshold)[0]
