@@ -3,7 +3,6 @@ setup(
   name = 'surfdist',
   packages = ['surfdist'],
   install_requires = ['numpy',
-                      'mayavi',
                       'gdist',
                       'nibabel',
                       'scipy'],
