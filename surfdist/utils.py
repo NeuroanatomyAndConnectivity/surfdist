@@ -16,24 +16,24 @@ def surf_keep_cortex(surf, cortex):
     """
 
     # split surface into coordinates and faces
-    coords, faces = surf
+    vertices, triangles = surf
 
-    # keep the vertices within the cortex label
-    vertices = np.array(coords[cortex], dtype=np.float64)
+    # keep only the vertices within the cortex label
+    cortex_vertices = np.array(vertices[cortex], dtype=np.float64)
 
     # remove faces with nodes not in the newly defined list of vertices
-    keep = np.zeros(len(faces))
-    # for or each face/triangle keep only those that  contain 3 nodes within the list of cortex nodes
+    keep = np.zeros(len(triangles))
+    # for or each face/triangle keep only those that contain 3 nodes within the list of cortex nodes
     for i in [0, 1, 2]:
-        keep += np.array([item in cortex for item in faces[:, i]])
+        keep += np.array([item in cortex for item in triangles[:, i]])
     ind = np.where(keep == 3)
-    triangles_old = np.array(faces[ind], dtype=np.int32)
-    triangles = np.array(faces[ind], dtype=np.int32)
+    cortex_triangles_old = np.array(triangles[ind], dtype=np.int32)
+    cortex_triangles = np.array(triangles[ind], dtype=np.int32)
     # reassign node index before outputting triangles
     for c, i in enumerate(cortex):
-        triangles[np.where(triangles_old == i)] = c
+        cortex_triangles[np.where(cortex_triangles_old == i)] = c
 
-    return vertices, triangles
+    return cortex_vertices, cortex_triangles
 
 
 def translate_src(src, cortex):
