@@ -5,14 +5,15 @@ def surf_keep_cortex(surf, cortex):
     """
     Remove medial wall from cortical surface to ensure that shortest paths are only calculated through the cortex.
     """
-    vertices = np.array(surf[0][cortex], dtype=np.float64)
+    coords, faces = surf
+    vertices = np.array(coords[cortex], dtype=np.float64)
 
-    keep = np.zeros(len(surf[1]))
+    keep = np.zeros(len(faces))
     for i in [0, 1, 2]:
-        keep += np.array([item in cortex for item in surf[1][:, i]])
+        keep += np.array([item in cortex for item in faces[:, i]])
     ind = np.where(keep == 3)
-    triangles_old = np.array(surf[1][ind], dtype=np.int32)
-    triangles = np.array(surf[1][ind], dtype=np.int32)
+    triangles_old = np.array(faces[ind], dtype=np.int32)
+    triangles = np.array(faces[ind], dtype=np.int32)
     for c, i in enumerate(cortex):
         triangles[np.where(triangles_old == i)] = c
 
