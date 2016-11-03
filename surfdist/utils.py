@@ -23,11 +23,13 @@ def surf_keep_cortex(surf, cortex):
 
     # remove faces with nodes not in the newly defined list of vertices
     keep = np.zeros(len(faces))
+    # for or each face/triangle keep only those that  contain 3 nodes within the list of cortex nodes
     for i in [0, 1, 2]:
         keep += np.array([item in cortex for item in faces[:, i]])
     ind = np.where(keep == 3)
     triangles_old = np.array(faces[ind], dtype=np.int32)
     triangles = np.array(faces[ind], dtype=np.int32)
+    # reassign node index before outputting triangles
     for c, i in enumerate(cortex):
         triangles[np.where(triangles_old == i)] = c
 
