@@ -4,10 +4,24 @@ import numpy as np
 def surf_keep_cortex(surf, cortex):
     """
     Remove medial wall from cortical surface to ensure that shortest paths are only calculated through the cortex.
+
+    Inputs
+    -------
+    surf : Tuple containing two numpy arrays of shape (n_nodes,3). Each node of the first array specifies the x, y, z
+           coordinates one node of the surface mesh. Each node of the second array specifies the indices of the three
+           nodes building one triangle of the surface mesh.
+           (e.g. the output from nibabel.freesurfer.io.read_geometry)
+    cortex : Array with indices of vertices included in within the cortex.
+             (e.g. the output from nibabel.freesurfer.io.read_label)
     """
+
+    # split surface into coordinates and faces
     coords, faces = surf
+
+    # keep the vertices within the cortex label
     vertices = np.array(coords[cortex], dtype=np.float64)
 
+    # remove faces with nodes not in the newly defined list of vertices
     keep = np.zeros(len(faces))
     for i in [0, 1, 2]:
         keep += np.array([item in cortex for item in faces[:, i]])
