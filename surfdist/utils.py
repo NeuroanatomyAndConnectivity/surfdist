@@ -15,13 +15,23 @@ def surf_keep_cortex(surf, cortex):
              (e.g. the output from nibabel.freesurfer.io.read_label)
     """
 
-    # split surface into coordinates and faces
+    # split surface into vertices and triangles
     vertices, triangles = surf
 
     # keep only the vertices within the cortex label
     cortex_vertices = np.array(vertices[cortex], dtype=np.float64)
 
-    # remove faces with nodes not in the newly defined list of vertices
+    # keep only the triangles within the cortex label
+    cortex_triangles = triangles_keep_cortex(triangles, cortex)
+
+    return cortex_vertices, cortex_triangles
+
+
+def triangles_keep_cortex(triangles, cortex):
+    """
+    Remove triangles with nodes not contained in the cortex label array
+    """
+
     keep = np.zeros(len(triangles))
     # for or each face/triangle keep only those that contain 3 nodes within the list of cortex nodes
     for i in [0, 1, 2]:
@@ -33,7 +43,7 @@ def surf_keep_cortex(surf, cortex):
     for c, i in enumerate(cortex):
         cortex_triangles[np.where(cortex_triangles_old == i)] = c
 
-    return cortex_vertices, cortex_triangles
+    return cortex_triangles
 
 
 def translate_src(src, cortex):
@@ -55,13 +65,13 @@ def recort(input_data, surf, cortex):
 
 
 def find_node_match(simple_vertices, complex_vertices):
-    '''
+    """
     Thanks to juhuntenburg.
     Functions taken from https://github.com/juhuntenburg/brainsurfacescripts
 
-    Finds those points on the complex mesh that correspoind best to the
+    Finds those points on the complex mesh that correspond best to the
     simple mesh while forcing a one-to-one mapping.
-    '''
+    """
 
     import scipy.spatial
 
