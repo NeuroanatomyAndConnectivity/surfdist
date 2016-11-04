@@ -45,25 +45,6 @@ def triangles_keep_cortex(triangles, cortex):
     return cortex_triangles
 
 
-def triangles_keep_cortex_old(triangles, cortex):
-    """
-    Remove triangles with nodes not contained in the cortex label array
-    """
-
-    keep = np.zeros(len(triangles))
-    # for or each face/triangle keep only those that contain 3 nodes within the list of cortex nodes
-    for i in [0, 1, 2]:
-        keep += np.array([item in cortex for item in triangles[:, i]])
-    ind = np.where(keep == 3)
-    cortex_triangles_old = np.array(triangles[ind], dtype=np.int32)
-    cortex_triangles = np.array(triangles[ind], dtype=np.int32)
-    # reassign node index before outputting triangles
-    for c, i in enumerate(cortex):
-        cortex_triangles[np.where(cortex_triangles_old == i)] = c
-
-    return cortex_triangles
-
-
 def translate_src(src, cortex):
     """
     Convert source nodes to new surface (without medial wall).
