@@ -13,7 +13,7 @@ def load_freesurfer_label(annot_input, label_name, cortex=None):
     cortex : not used
     """
 
-    if cortex:
+    if cortex is not None:
         print("Warning: cortex is not used to load the freesurfer label")
 
     labels, color_table, names = nib.freesurfer.read_annot(annot_input)
