@@ -16,9 +16,14 @@ def load_freesurfer_label(annot_input, label_name, cortex):
     return src
 
 
-def get_freesurfer_label(annot_input):
+def get_freesurfer_label(annot_input, verbose = True):
     """
     Print freesurfer label names.
     """
     annot = nib.freesurfer.read_annot(annot_input)
-    print annot[2]
+    
+    if verbose:
+        
+        print annot[2]
+    
+    return annot[2]
