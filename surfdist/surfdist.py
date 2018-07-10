@@ -1,4 +1,5 @@
-def dist_calc(surf, cortex, src, dist_type = "min"):
+def dist_calc(surf, cortex, source_nodes, dist_type = "min"):
+
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes.
     "dist_type" specifies whether to calculate "min", "mean", "median", or "max" distance values 
@@ -9,8 +10,8 @@ def dist_calc(surf, cortex, src, dist_type = "min"):
     from utils import surf_keep_cortex, translate_src, recort
     import numpy as np
 
-    vertices, triangles = surf_keep_cortex(surf, cortex)
-    src_new = translate_src(src, cortex)
+    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
+    translated_source_nodes = translate_src(source_nodes, cortex)
 
     if len(src_new) == 1:
         
@@ -19,15 +20,15 @@ def dist_calc(surf, cortex, src, dist_type = "min"):
         
     if dist_type == "min":
     
-        data = gdist.compute_gdist(vertices, triangles, source_indices = src_new)
+        data = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
     
     else:
         
         data_nodes = []
         
-        for i in src_new:
+        for i in translated_source_nodes:
             
-            data_nodes.append(gdist.compute_gdist(vertices, triangles, source_indices = np.array(i, ndmin=1)))
+            data_nodes.append(gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = np.array(i, ndmin=1)))
             
         data_nodes = np.array(data_nodes)
         
@@ -58,14 +59,14 @@ def zone_calc(surf, cortex, src):
     from utils import surf_keep_cortex, translate_src, recort
     import numpy as np
 
-    vertices, triangles = surf_keep_cortex(surf, cortex)
+    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
 
-    dist_vals = np.zeros((len(src), len(vertices)))
+    dist_vals = np.zeros((len(source_nodes), len(cortex_vertices)))
 
-    for x in range(len(src)):
+    for x in range(len(source_nodes)):
         
-        src_new = translate_src(src[x], cortex)
-        dist_vals[x, :] = gdist.compute_gdist(vertices, triangles, source_indices = src_new)
+        translated_source_nodes = translate_src(source_nodes[x], cortex)
+        dist_vals[x, :] = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
 
     data = np.argsort(dist_vals, axis=0)[0, :] + 1
 
@@ -89,40 +90,40 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_Wall
     from utils import surf_keep_cortex, translate_src, recort
     import numpy as np
 
-    vertices, triangles = surf_keep_cortex(surf, cortex)    
+    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex) 
 
     label_list = sd.load.get_freesurfer_label(labels, verbose = False)
     rs = np.where([a not in exceptions for a in label_list])[0]
     rois = [label_list[r] for r in rs]
 
-    src_new = []
+    translated_source_nodes = []
     
     for region in rois:
     
-        src = sd.load.load_freesurfer_label(labels, region, cortex)
-        src_new.append(translate_src(src, cortex))
+        source_nodes = sd.load.load_freesurfer_label(labels, region, cortex)
+        translated_source_nodes.append(translate_src(source_nodes, cortex))
     
     data_matrix = np.zeros((len(rois), len(rois)))
     
     if dist_type == "min":
     
-        for i in src_new:
+        for i in translated_source_nodes:
         
-            data = gdist.compute_gdist(vertices, triangles, source_indices = i)
+            data = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = i)
             
-            for n, j in enumerate(src_new):
+            for n, j in enumerate(translated_source_nodes):
                 
                 data_matrix[n,:] = np.min(data[j])
     
     else:
                 
-        for m, i in enumerate(src_new):
+        for m, i in enumerate(translated_source_nodes):
             
             data_nodes = []
             
             for j in i:
             
-                data_nodes.append(gdist.compute_gdist(vertices, triangles, source_indices = np.array(j, ndmin=1)))
+                data_nodes.append(gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = np.array(j, ndmin=1)))
             
             data_nodes = np.array(data_nodes)            
         
@@ -140,7 +141,7 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_Wall
                 
             del data_nodes
                 
-            for n, k in enumerate(src_new):
+            for n, k in enumerate(translated_source_nodes):
                 
                 if dist_type == "mean":
 

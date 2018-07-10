@@ -4,19 +4,45 @@ import numpy as np
 def surf_keep_cortex(surf, cortex):
     """
     Remove medial wall from cortical surface to ensure that shortest paths are only calculated through the cortex.
+
+    Inputs
+    -------
+    surf : Tuple containing two numpy arrays of shape (n_nodes,3). Each node of the first array specifies the x, y, z
+           coordinates one node of the surface mesh. Each node of the second array specifies the indices of the three
+           nodes building one triangle of the surface mesh.
+           (e.g. the output from nibabel.freesurfer.io.read_geometry)
+    cortex : Array with indices of vertices included in within the cortex.
+             (e.g. the output from nibabel.freesurfer.io.read_label)
     """
-    vertices = np.array(surf[0][cortex], dtype=np.float64)
 
-    keep = np.zeros(len(surf[1]))
-    for i in [0, 1, 2]:
-        keep += np.array([item in cortex for item in surf[1][:, i]])
-    ind = np.where(keep == 3)
-    triangles_old = np.array(surf[1][ind], dtype=np.int32)
-    triangles = np.array(surf[1][ind], dtype=np.int32)
-    for c, i in enumerate(cortex):
-        triangles[np.where(triangles_old == i)] = c
+    # split surface into vertices and triangles
+    vertices, triangles = surf
 
-    return vertices, triangles
+    # keep only the vertices within the cortex label
+    cortex_vertices = np.array(vertices[cortex], dtype=np.float64)
+
+    # keep only the triangles within the cortex label
+    cortex_triangles = triangles_keep_cortex(triangles, cortex)
+
+    return cortex_vertices, cortex_triangles
+
+
+def triangles_keep_cortex(triangles, cortex):
+    """
+    Remove triangles with nodes not contained in the cortex label array
+    """
+
+    # for or each face/triangle keep only those that only contain nodes within the list of cortex nodes
+    input_shape = triangles.shape
+    triangle_is_in_cortex = np.all(np.reshape(np.in1d(triangles.ravel(), cortex), input_shape), axis=1)
+
+    cortex_triangles_old = np.array(triangles[triangle_is_in_cortex], dtype=np.int32)
+
+    # reassign node index before outputting triangles
+    new_index = np.digitize(cortex_triangles_old.ravel(), cortex, right=True)
+    cortex_triangles = np.array(np.arange(len(cortex))[new_index].reshape(cortex_triangles_old.shape), dtype=np.int32)
+
+    return cortex_triangles
 
 
 def translate_src(src, cortex):
@@ -38,13 +64,13 @@ def recort(input_data, surf, cortex):
 
 
 def find_node_match(simple_vertices, complex_vertices):
-    '''
+    """
     Thanks to juhuntenburg.
     Functions taken from https://github.com/juhuntenburg/brainsurfacescripts
 
-    Finds those points on the complex mesh that correspoind best to the
+    Finds those points on the complex mesh that correspond best to the
     simple mesh while forcing a one-to-one mapping.
-    '''
+    """
 
     import scipy.spatial
 
