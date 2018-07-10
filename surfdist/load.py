@@ -23,9 +23,11 @@ def load_freesurfer_label(annot_input, label_name, cortex=None):
     return label_nodes
 
 
-def get_freesurfer_label(annot_input):
+def get_freesurfer_label(annot_input, verbose = True):
     """
     Print freesurfer label names.
     """
     labels, color_table, names = nib.freesurfer.read_annot(annot_input)
-    print names
+    if verbose:
+        print names
+    return names
