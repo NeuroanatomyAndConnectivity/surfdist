@@ -1,6 +1,7 @@
 import numpy as np
+import numba
 
-
+@numba.jit(parallel=True)
 def surf_keep_cortex(surf, cortex):
     """
     Remove medial wall from cortical surface to ensure that shortest paths are only calculated through the cortex.
@@ -26,7 +27,7 @@ def surf_keep_cortex(surf, cortex):
 
     return cortex_vertices, cortex_triangles
 
-
+@numba.jit(parallel=True)
 def triangles_keep_cortex(triangles, cortex):
     """
     Remove triangles with nodes not contained in the cortex label array
@@ -44,7 +45,7 @@ def triangles_keep_cortex(triangles, cortex):
 
     return cortex_triangles
 
-
+@numba.jit(parallel=True)
 def translate_src(src, cortex):
     """
     Convert source nodes to new surface (without medial wall).
@@ -52,7 +53,6 @@ def translate_src(src, cortex):
     src_new = np.array(np.where(np.in1d(cortex, src))[0], dtype=np.int32)
 
     return src_new
-
 
 def recort(input_data, surf, cortex):
     """
@@ -62,7 +62,7 @@ def recort(input_data, surf, cortex):
     data[cortex] = input_data
     return data
 
-
+@numba.jit(parallel=True)
 def find_node_match(simple_vertices, complex_vertices):
     """
     Thanks to juhuntenburg.

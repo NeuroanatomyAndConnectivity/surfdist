@@ -17,6 +17,7 @@ def load_freesurfer_label(annot_input, label_name, cortex=None):
         print("Warning: cortex is not used to load the freesurfer label")
 
     labels, color_table, names = nib.freesurfer.read_annot(annot_input)
+    names = [i.decode('utf-8') for i in names]
     label_value = names.index(label_name)
     label_nodes = np.array(np.where(np.in1d(labels, label_value)), dtype=np.int32)
 
@@ -29,5 +30,5 @@ def get_freesurfer_label(annot_input, verbose = True):
     """
     labels, color_table, names = nib.freesurfer.read_annot(annot_input)
     if verbose:
-        print names
+        print(names)
     return names

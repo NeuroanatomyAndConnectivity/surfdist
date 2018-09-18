@@ -125,4 +125,4 @@ def viz(coords, faces, stat_map=None,
 
         p3dcollec.set_facecolors(face_colors)
 
-    return fig
+    return fig, ax
