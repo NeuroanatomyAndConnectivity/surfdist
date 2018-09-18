@@ -1,0 +1,6 @@
+numpy
+gdist
+nibabel
+os
+scipy
+numba
