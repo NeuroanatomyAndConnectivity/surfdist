@@ -1,5 +1,5 @@
 import gdist
-from surfdist.utils import surf_keep_cortex, translate_src, recort
+from utils import surf_keep_cortex, translate_src, recort
 import numpy as np
 
 
