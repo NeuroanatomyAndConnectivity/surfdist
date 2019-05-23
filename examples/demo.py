@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import surfdist as sd
-from surfdist import viz, load, utils, surfdist
 
 # calculate and display distance from central sulcus at each node:
 cmap='coolwarm'
@@ -16,7 +15,7 @@ sulc=nib.freesurfer.read_morph_data(os.path.join(base_dir, 'bert/surf/lh.sulc'))
 src  = sd.load.load_freesurfer_label(os.path.join(base_dir, 'bert/label/lh.aparc.a2009s.annot'), 'S_central', cort)
 
 # calculate distance
-dist = sd.surfdist.dist_calc(surf, cort, src)
+dist = sd.analysis.dist_calc(surf, cort, src)
 
 # visualize
 plot_med = sd.viz.viz(surf[0], surf[1], dist, bg_map=sulc, bg_on_stat=True, cmap=cmap)

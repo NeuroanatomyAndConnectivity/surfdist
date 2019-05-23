@@ -1,6 +1,6 @@
 import gdist
-from utils import surf_keep_cortex, translate_src, recort
 import numpy as np
+from surfdist.utils import surf_keep_cortex, translate_src, recort
 
 
 def dist_calc(surf, cortex, source_nodes):
