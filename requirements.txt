@@ -1,6 +1,6 @@
-numpy
-gdist
-nibabel
-os
-scipy
 numba
+numpy
+scipy
+nibabel
+tvb-gdist
+nilearn

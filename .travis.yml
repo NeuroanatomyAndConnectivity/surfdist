@@ -1,0 +1,12 @@
+language: python
+python:
+  - "3.6"
+before_install:
+  - pip3 install -U --upgrade pip
+  - pip3 install -U setuptools wheel
+  - pip3 install -U Cython -vv
+install:
+  - pip3 install -U -r requirements.txt
+  - pip3 install -U .
+script:
+  - pytest
