@@ -1,5 +1,6 @@
-numba
+Cython
 numpy
+numba
 scipy
 nibabel
 tvb-gdist
