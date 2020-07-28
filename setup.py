@@ -5,8 +5,12 @@ with open("README.md", "r") as fh:
 
 from pip._internal.req import parse_requirements
 def load_requirements(fname):
-    reqs = parse_requirements(fname, session="test")
-    return [str(ir.req) for ir in reqs]
+    install_reqs = parse_requirements(fname, session=False)
+    try:
+        requirements = [str(ir.req) for ir in install_reqs]
+    except:
+        requirements = [str(ir.requirement) for ir in install_reqs]    
+    return requirements 
 
 setuptools.setup(
   name = 'surfdist',
