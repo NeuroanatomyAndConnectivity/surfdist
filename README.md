@@ -1,6 +1,6 @@
 surfdist
 ========
-[![Build Status](https://travis-ci.com/NeuroanatomyAndConnectivity/surfdist.svg?branch=travis)](https://travis-ci.com/NeuroanatomyAndConnectivity/surfdist)
+[![Build Status](https://travis-ci.com/NeuroanatomyAndConnectivity/surfdist.svg?branch=master)](https://travis-ci.com/NeuroanatomyAndConnectivity/surfdist)
 
 Calculate the exact geodesic distance on a triangular surface mesh using the [gdist package](https://pypi.python.org/pypi/gdist/), which is based on the [c++ library](https://code.google.com/p/geodesic/).
 
@@ -17,20 +17,20 @@ Example
     import matplotlib.pyplot as plt
     import os
     import surfdist as sd
-    from surfdist import viz, load, utils, surfdist
+    from surfdist import viz, load, utils, analysis
 
     # calculate and display distance from central sulcus at each node:
-    cmap='coolwarm'
+    cmap = 'coolwarm'
     base_dir = '/Applications/freesurfer/subjects/'
     surf = nib.freesurfer.read_geometry(os.path.join(base_dir, 'bert/surf/lh.pial'))
     cort = np.sort(nib.freesurfer.read_label(os.path.join(base_dir, 'bert/label/lh.cortex.label')))
-    sulc=nib.freesurfer.read_morph_data(os.path.join(base_dir, 'bert/surf/lh.sulc'))
+    sulc = nib.freesurfer.read_morph_data(os.path.join(base_dir, 'bert/surf/lh.sulc'))
 
     # load central sulcus nodes
     src  = sd.load.load_freesurfer_label(os.path.join(base_dir, 'bert/label/lh.aparc.a2009s.annot'), 'S_central', cort)
 
     # calculate distance
-    dist = sd.surfdist.dist_calc(surf, cort, src)
+    dist = sd.analysis.dist_calc(surf, cort, src)
 
     # visualize
     plot_med = sd.viz.viz(surf[0], surf[1], dist, bg_map=sulc, bg_on_stat=True, cmap=cmap)
