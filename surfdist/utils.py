@@ -1,5 +1,6 @@
 import numpy as np
 import numba
+import scipy.spatial
 
 @numba.jit(parallel=True)
 def surf_keep_cortex(surf, cortex):
@@ -72,7 +73,6 @@ def find_node_match(simple_vertices, complex_vertices):
     simple mesh while forcing a one-to-one mapping.
     """
 
-    import scipy.spatial
 
     # make array for writing in final voronoi seed indices
     voronoi_seed_idx = np.zeros((simple_vertices.shape[0],), dtype='int64')-1
