@@ -2,6 +2,7 @@ import numpy as np
 import numba
 import scipy.spatial
 
+
 @numba.jit(parallel=True)
 def surf_keep_cortex(surf, cortex):
     """
