@@ -64,8 +64,8 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
     print(len(exceptions))
     print(len(rois))
 
-#     if verbose:
-#         print("# of regions: " + str(len(rois)))
+    if verbose:
+        print("# of regions: " + str(len(rois)))
 
     ###calculate distance from each region to all nodes:
     dist_roi = []
@@ -74,8 +74,8 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
         translated_source_nodes = translate_src(source_nodes, cortex)
         dist_roi.append(gdist.compute_gdist(cortex_vertices, cortex_triangles,
                                                 source_indices = translated_source_nodes))
-#         if verbose:
-#             print(roi)
+        if verbose:
+            print(roi)
     dist_roi = np.array(dist_roi)
 
     ###Calculate min distance per region:
