@@ -1,5 +1,4 @@
 import numpy as np
-
 import scipy.spatial
 
 def surf_keep_cortex(surf, cortex):
