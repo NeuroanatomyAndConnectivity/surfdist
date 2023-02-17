@@ -4,7 +4,6 @@ import scipy.spatial
 def surf_keep_cortex(surf, cortex):
     """
     Remove medial wall from cortical surface to ensure that shortest paths are only calculated through the cortex.
-
     Inputs
     -------
     surf : Tuple containing two numpy arrays of shape (n_nodes,3). Each node of the first array specifies the x, y, z
@@ -63,7 +62,6 @@ def find_node_match(simple_vertices, complex_vertices):
     """
     Thanks to juhuntenburg.
     Functions taken from https://github.com/juhuntenburg/brainsurfacescripts
-
     Finds those points on the complex mesh that correspond best to the
     simple mesh while forcing a one-to-one mapping.
     """
@@ -112,3 +110,8 @@ def find_node_match(simple_vertices, complex_vertices):
                 col += 1
 
     return voronoi_seed_idx, inaccuracy
+
+def intSettoList(data):
+    #### helper function for loading ciftis### 
+    data=list(set(data))
+    return [int(x) for x in data]
