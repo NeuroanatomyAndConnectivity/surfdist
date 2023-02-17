@@ -1,6 +1,7 @@
 import numpy as np
-import scipy.spatial
+import numba
 
+@numba.jit(parallel=True)
 def surf_keep_cortex(surf, cortex):
     """
     Remove medial wall from cortical surface to ensure that shortest paths are only calculated through the cortex.
@@ -26,6 +27,7 @@ def surf_keep_cortex(surf, cortex):
 
     return cortex_vertices, cortex_triangles
 
+@numba.jit(parallel=True)
 def triangles_keep_cortex(triangles, cortex):
     """
     Remove triangles with nodes not contained in the cortex label array
@@ -43,6 +45,7 @@ def triangles_keep_cortex(triangles, cortex):
 
     return cortex_triangles
 
+@numba.jit(parallel=True)
 def translate_src(src, cortex):
     """
     Convert source nodes to new surface (without medial wall).
@@ -59,6 +62,7 @@ def recort(input_data, surf, cortex):
     data[cortex] = input_data
     return data
 
+@numba.jit(parallel=True)
 def find_node_match(simple_vertices, complex_vertices):
     """
     Thanks to juhuntenburg.
@@ -68,6 +72,7 @@ def find_node_match(simple_vertices, complex_vertices):
     simple mesh while forcing a one-to-one mapping.
     """
 
+    import scipy.spatial
 
     # make array for writing in final voronoi seed indices
     voronoi_seed_idx = np.zeros((simple_vertices.shape[0],), dtype='int64')-1
@@ -112,9 +117,3 @@ def find_node_match(simple_vertices, complex_vertices):
                 col += 1
 
     return voronoi_seed_idx, inaccuracy
-
-def intSettoList(data):
-    #### helper function for loading ciftis### 
-    data=list(set(data))
-    return [int(x) for x in data]
-    
