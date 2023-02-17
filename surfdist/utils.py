@@ -112,3 +112,9 @@ def find_node_match(simple_vertices, complex_vertices):
                 col += 1
 
     return voronoi_seed_idx, inaccuracy
+
+def intSettoList(data):
+    #### helper function for loading ciftis### 
+    data=list(set(data))
+    return [int(x) for x in data]
+    
