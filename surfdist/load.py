@@ -33,6 +33,21 @@ def get_freesurfer_label(annot_input, verbose = True):
         print(names)
     return names
 
+def load_gifti_labels(giftiLabel):
+    """Load in the values from a gifti label. Input is heimsphere specific.
+    This means you load in a left or right gifti file separately"""
+    gii = nib.load(giftiLabel)
+    gii_data = gii.darrays[0].data 
+    
+    labels=gii.labeltable.get_labels_as_dict()
+    label_vals={y: x for x, y in labels.items()}
+    labels=label_vals
+    del label_vals
+    labelNodes={}
+    for k in labels:
+        labelNodes[k]=np.where(labels[k]==gii_data)[0]
+    return labelNodes
+
 def load_cifti_labels(ciftiLabel):
     """Load in the values from a cifti label. Input is expected to contain both left and right hemispheres. 
     Current iteration has been tested on Yeo and Schaefer cifti files in fs_lr 32k space
