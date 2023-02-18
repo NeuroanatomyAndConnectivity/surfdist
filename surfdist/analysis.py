@@ -1,9 +1,13 @@
 import gdist
 import numpy as np
 import nibabel as nib
-from surfdist.utils import surf_keep_cortex, translate_src, recort
+from surfdist.utils import surf_keep_cortex, translate_src, recort, roiDistance
 import surfdist as sd
 from surfdist.load import load_cifti_labels
+#### multiprocessing is used in cifti and gifti distance matrix calculations 
+from multiprocessing.pool import Pool as ProcessPool
+import multiprocessing
+cpus=multiprocessing.cpu_count()-1
 
 def dist_calc(surf, cortex, source_nodes,gifti=False):
 
@@ -93,7 +97,9 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
 
     return dist_mat,rois
 
-def dist_calc_matrixCifti(surfGii,cifti,hemi,verbose=True):
+
+
+def dist_calc_matrixCifti(surfGii, cifti, hemi):
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes defined labels in a cifti file.
     "labels" specifies the freesurfer label file to use. All labels in the cifti file except the medial wall will be used.
@@ -101,46 +107,39 @@ def dist_calc_matrixCifti(surfGii,cifti,hemi,verbose=True):
       dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
       rois: label names in order of n
     """
-    
-    gii=nib.load(surfGii)
-    surf=(gii.darrays[0].data,gii.darrays[1].data)
-    
-    Llabels,Rlabels=load_cifti_labels(cifti)
-    ctx=np.array(range(len(surf[0])))
+
+    gii = nib.load(surfGii)
+    surf = (gii.darrays[0].data, gii.darrays[1].data)
+
+    Llabels, Rlabels = load_cifti_labels(cifti)
+    ctx = np.array(range(len(surf[0])))
 
     ### get cortex vertices and remove medial wall from label list 
-    if hemi=='L':
-        medialWall=Llabels['???']
+    if hemi == 'L':
+        medialWall = Llabels['???']
         del Llabels['???']
-        labels=Llabels
-    elif hemi=='R':
-        medialWall=Rlabels['???']
+        labels = Llabels
+    elif hemi == 'R':
+        medialWall = Rlabels['???']
         del Rlabels['???']
-        labels=Rlabels
-    cortex=np.delete(ctx,medialWall)
-    
+        labels = Rlabels
+    cortex = np.delete(ctx, medialWall)
+
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
 
-#     # remove exceptions from label list:
+    # remove exceptions from label list:
     rois=labels
-    if verbose:
-        print("# of regions: " + str(len(rois)))
-
-    ###calculate distance from each region to all nodes:
-    dist_roi = []
-    for roi in rois:
-        source_nodes =rois[roi]
-        translated_source_nodes = translate_src(source_nodes, cortex)
-        dist_roi.append(gdist.compute_gdist(cortex_vertices, cortex_triangles,
-                                                source_indices = translated_source_nodes))
-        if verbose:
-            print(roi)
-    dist_roi = np.array(dist_roi)
-
-    ###Calculate min distance per region:
+    nodes= list(rois.values())
+    params=[[nodes[i],cortex,cortex_vertices,cortex_triangles] for i in range(len(nodes))]
+    
+    with ProcessPool(processes=cpus-1) as pool:
+        dist_roi=pool.starmap(roiDistance,params)
+    dist_roi=np.array(dist_roi)
+    
+     ###Calculate min distance per region:
     dist_mat = []
     for roi in rois:
-        source_nodes =rois[roi]
+        source_nodes=rois[roi]
         translated_source_nodes = translate_src(source_nodes, cortex)
         dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
     dist_mat = np.array(dist_mat)

@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.spatial
+import gdist
 
 def surf_keep_cortex(surf, cortex):
     """
@@ -115,3 +116,9 @@ def intSettoList(data):
     #### helper function for loading ciftis### 
     data=list(set(data))
     return [int(x) for x in data]
+
+def roiDistance(source_nodes,cortex,cortex_vertices,cortex_triangles):  
+    """utility function that allows distance matrices to be run in parallel"""
+    translated_source_nodes = translate_src(source_nodes, cortex)
+    dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices=translated_source_nodes)
+    return dist
