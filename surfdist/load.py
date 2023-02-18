@@ -50,8 +50,8 @@ def load_cifti_labels(ciftiLabel):
         LvertVals=vertexValues[0:Lnverts]
         RvertVals=vertexValues[Rnverts:]
     else:
-        print('labels are not split by hemisphere. function will not work')
-        print('using hcp indices') #### these indices are specified for cortex in the HCP output ciftis
+        print('labels are not split by hemisphere. function will use')
+        print('hcp indices') #### these indices are specified for cortex in the HCP output ciftis
         lcort=slice(0,29696)
         rcort=slice(29696, 59412)
         LvertVals=vertexValues[lcort]
