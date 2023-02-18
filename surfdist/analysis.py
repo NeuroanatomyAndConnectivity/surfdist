@@ -3,7 +3,7 @@ import numpy as np
 import nibabel as nib
 from surfdist.utils import surf_keep_cortex, translate_src, recort, roiDistance
 import surfdist as sd
-from surfdist.load import load_cifti_labels
+from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label
 #### multiprocessing is used in cifti and gifti distance matrix calculations 
 from multiprocessing.pool import Pool as ProcessPool
 import multiprocessing
@@ -52,9 +52,10 @@ def zone_calc(surf, cortex, source_nodes,gifti=False):
     return zone
 
 
-def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall'], verbose = True):
+def dist_calc_matrixFS(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall'], verbose = True):
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes.
+    This function is speciffic to FreeSurfer inputs.
     "labels" specifies the freesurfer label file to use. All values will be used other than those
     specified in "exceptions" (default: 'Unknown' and 'Medial_Wall').
     returns:
@@ -64,39 +65,38 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
 
     # remove exceptions from label list:
-    label_list = sd.load.get_freesurfer_label(labels, verbose = False)
+    label_list = get_freesurfer_label(labels, verbose = False)
     tmp=[i.decode('utf-8') for i in label_list]
     label_list=tmp
     del tmp
-    rois=list(set(label_list)-set(exceptions))
-    print(len(label_list))
-    print(len(exceptions))
-    print(len(rois))
+    label_list=list(set(label_list)-set(exceptions))
+
 
     if verbose:
-        print("# of regions: " + str(len(rois)))
+        print("# of regions: " + str(len(label_list)))
 
+    
+    rois=[load_freesurfer_label(labels, roi) for roi in label_list]
+    rois=dict(zip(label_list,rois))
+   
+
+    nodes= list(rois.values())
+    params=[[nodes[i],cortex,cortex_vertices,cortex_triangles] for i in range(len(nodes))]
+    
     ###calculate distance from each region to all nodes:
-    dist_roi = []
-    for roi in rois:
-        source_nodes = sd.load.load_freesurfer_label(labels, roi)
-        translated_source_nodes = translate_src(source_nodes, cortex)
-        dist_roi.append(gdist.compute_gdist(cortex_vertices, cortex_triangles,
-                                                source_indices = translated_source_nodes))
-        if verbose:
-            print(roi)
-    dist_roi = np.array(dist_roi)
+    with ProcessPool(processes=cpus-1) as pool:
+        dist_roi=pool.starmap(roiDistance,params)
+    dist_roi=np.array(dist_roi)
 
     ###Calculate min distance per region:
     dist_mat = []
     for roi in rois:
-        source_nodes = sd.load.load_freesurfer_label(labels, roi)
+        source_nodes = load_freesurfer_label(labels, roi)
         translated_source_nodes = translate_src(source_nodes, cortex)
         dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
     dist_mat = np.array(dist_mat)
 
-    return dist_mat,rois
-
+    return dist_mat,list(rois.keys())
 
 
 def dist_calc_matrixCifti(surfGii, cifti, hemi):
@@ -144,4 +144,4 @@ def dist_calc_matrixCifti(surfGii, cifti, hemi):
         dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
     dist_mat = np.array(dist_mat)
 
-    return dist_mat,rois
+    return dist_mat,list(rois.keys())
