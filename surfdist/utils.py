@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.spatial
+import nibabel as nib
 import gdist
 
 def surf_keep_cortex(surf, cortex):
@@ -122,3 +123,18 @@ def roiDistance(source_nodes,cortex,cortex_vertices,cortex_triangles):
     translated_source_nodes = translate_src(source_nodes, cortex)
     dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices=translated_source_nodes)
     return dist
+
+#### to do add input parser 
+def AnatomyInputParser(data):
+    """ Parses data input for anatomical surface data """
+    if type(data)==tuple and len(data)==2:
+        print('using surface defined by tuple of vertices and faces')
+        surf=data
+    elif type(data)==str:
+        if 'gii' in data:
+            print('using gifti anatomical surface')
+            surf=(nib.load(data).darrays[0].data,nib.load(data).darrays[1].data)    
+        else:
+            print('using freesurfer anatomical surface')
+            surf=nib.freesurfer.read_geometry(data)
+    return surf

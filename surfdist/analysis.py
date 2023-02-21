@@ -1,15 +1,15 @@
 import gdist
 import numpy as np
 import nibabel as nib
-from surfdist.utils import surf_keep_cortex, translate_src, recort, roiDistance
+from surfdist.utils import surf_keep_cortex, translate_src, recort, roiDistance,AnatomyInputParser
 import surfdist as sd
 from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label, load_gifti_labels
 #### multiprocessing is used in cifti and gifti distance matrix calculations 
 from multiprocessing.pool import Pool as ProcessPool
 import multiprocessing
-cpus=multiprocessing.cpu_count()-1
 
-def dist_calc(surf, cortex, source_nodes,gifti=False):
+
+def dist_calc(surf, cortex, source_nodes, recortex=True, gifti=False):
 
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes.
@@ -23,9 +23,9 @@ def dist_calc(surf, cortex, source_nodes,gifti=False):
 
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
     translated_source_nodes = translate_src(source_nodes, cortex)
-    data = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
-    dist = recort(data, surf, cortex)
-    del data
+    dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
+    if recortex==True:
+        dist = recort(dist, surf, cortex)
 
     return dist
 
@@ -85,7 +85,7 @@ def dist_calc_matrixFS(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wa
     params=[[nodes[i],cortex,cortex_vertices,cortex_triangles] for i in range(len(nodes))]
     
     ###calculate distance from each region to all nodes:
-    with ProcessPool(processes=cpus-1) as pool:
+    with ProcessPool(processes=n_cpus-1) as pool:
         dist_roi=pool.starmap(roiDistance,params)
     dist_roi=np.array(dist_roi)
 
@@ -133,7 +133,7 @@ def dist_calc_matrixCifti(surfGii, cifti, hemi):
     nodes= list(rois.values())
     params=[[nodes[i],cortex,cortex_vertices,cortex_triangles] for i in range(len(nodes))]
     
-    with ProcessPool(processes=cpus-1) as pool:
+    with ProcessPool(processes=n_cpus-1) as pool:
         dist_roi=pool.starmap(roiDistance,params)
     dist_roi=np.array(dist_roi)
     
@@ -147,7 +147,7 @@ def dist_calc_matrixCifti(surfGii, cifti, hemi):
 
     return dist_mat,list(rois.keys())
 
-def dist_calc_matrixGifti(surfGii, giftiLabel,exceptions):
+def dist_calc_matrixGifti(AnatSurf, giftiLabel,exceptions,n_cpus=1):
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes defined labels in a cifti file.
     "labels" specifies the freesurfer label file to use. All labels in the cifti file except the medial wall will be used.
@@ -159,12 +159,8 @@ def dist_calc_matrixGifti(surfGii, giftiLabel,exceptions):
       dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
       rois: label names in order of n
     """
-    
-    
-    
-    
-    gii = nib.load(surfGii)
-    surf = (gii.darrays[0].data, gii.darrays[1].data)
+    print(f'using {n_cpus} cpus')
+    surf=AnatomyInputParser(AnatSurf)
 
     labels= load_gifti_labels(giftiLabel)
     medialWall = labels['???']
@@ -174,17 +170,14 @@ def dist_calc_matrixGifti(surfGii, giftiLabel,exceptions):
     
     for i in exceptions:
         del labels[i]
-
-    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
     
     # remove exceptions from label list:
     rois=labels
     nodes= list(rois.values())
-    params=[[nodes[i],cortex,cortex_vertices,cortex_triangles] for i in range(len(nodes))]
+    params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
     
-
-    with ProcessPool(processes=cpus-1) as pool:
-        dist_roi=pool.starmap(roiDistance,params)
+    with ProcessPool(processes=n_cpus) as pool:
+        dist_roi=pool.starmap(dist_calc,params)
     dist_roi=np.array(dist_roi)
     
      ###Calculate min distance per region:
