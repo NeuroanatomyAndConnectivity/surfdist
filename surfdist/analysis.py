@@ -96,7 +96,7 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
             del labels[l]
     
     nodes= list(labels.values())
-    params=[[AnatSurf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
+    params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
     
     with ProcessPool(processes=n_cpus) as pool:
         dist_roi=pool.starmap(dist_calc,params)
