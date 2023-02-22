@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.spatial
 import nibabel as nib
+from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label, load_gifti_labels,load_FS_annot
 import gdist
 
 def surf_keep_cortex(surf, cortex):
@@ -113,11 +114,6 @@ def find_node_match(simple_vertices, complex_vertices):
 
     return voronoi_seed_idx, inaccuracy
 
-def intSettoList(data):
-    #### helper function for loading ciftis### 
-    data=list(set(data))
-    return [int(x) for x in data]
-
 def roiDistance(source_nodes,cortex,cortex_vertices,cortex_triangles):  
     """utility function that allows distance matrices to be run in parallel"""
     translated_source_nodes = translate_src(source_nodes, cortex)
@@ -138,3 +134,26 @@ def AnatomyInputParser(data):
             print('using freesurfer anatomical surface')
             surf=nib.freesurfer.read_geometry(data)
     return surf
+
+def LabelInputParser(data,hemi):
+    """ Parses data input for label surface data """
+    if type(data)==str:
+        if 'gii' in data:
+            print('using gifti label data')
+            labels= load_gifti_labels(data)
+            medialWall = labels['???']
+            del labels['???']
+        elif '.dlabel.nii' in data:
+            print('using cifti label file')
+            labels= load_cifti_labels(data,hemi)
+            medialWall = labels['???']
+            del labels['???']
+        elif '.annot' in data:
+            print('using Freesurfer annotation')
+            labels=load_FS_annot(data)
+            medialWall=[]
+    return labels,medialWall
+
+
+    # elif len(data)==3:
+    #     print('data consists of a list of labels and node IDs, and a list of vertices included in the cortex')

@@ -1,9 +1,9 @@
 import gdist
 import numpy as np
 import nibabel as nib
-from surfdist.utils import surf_keep_cortex, translate_src, recort, roiDistance,AnatomyInputParser
+from surfdist.utils import surf_keep_cortex, translate_src, recort, roiDistance,AnatomyInputParser,LabelInputParser
 import surfdist as sd
-from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label, load_gifti_labels
+from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label, load_gifti_labels,load_FS_annot
 #### multiprocessing is used in cifti and gifti distance matrix calculations 
 from multiprocessing.pool import Pool as ProcessPool
 import multiprocessing
@@ -147,11 +147,27 @@ def dist_calc_matrixCifti(surfGii, cifti, hemi):
 
     return dist_mat,list(rois.keys())
 
-def dist_calc_matrixGifti(AnatSurf, giftiLabel,exceptions,n_cpus=1):
+def dist_calc_matrixGifti(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None):
     """
-    Calculate exact geodesic distance along cortical surface from set of source nodes defined labels in a cifti file.
-    "labels" specifies the freesurfer label file to use. All labels in the cifti file except the medial wall will be used.
+    Calculate a distance matrix between a set of ROIs defined by a set of labels. 
     
+    Inputs are as follows:
+    
+    AnatSurf: An anatomical surface file which such as freesurfer output or a gifti file. 
+    Alternatively a tuple of len(2) containing the vertex indices and vertex faces can be passed. 
+
+    LabelInput: Can be a gifti label file, cifti label file, or freesurfer annotation file. 
+    Alternatively list of lists where each index contains a set of labels and a set of source nodes matched at each index
+    
+    hemi: the string 'L' or 'R' specifying which hemisphere the labels are being extracted from
+
+    exceptions: A list of areas to exclude from the distance matrix calculation. 
+    There is no need to specify the medial wall. The function excludes that by default
+
+    n_cpus: The number of cpus to use when calculating the distance matrix. 
+
+    fsCort: Required file mapping cortical vertices. required if using freesurfer files
+
     YOU MUST PROVIDE A LIST OF EXCEPTIONS FOR AREAS NOT INCLUDED IN THE CALCUALATION BASED ON YOUR GIFTI FILE 
     example: dist_calc_matrixGifti('anat.surf.gii','labels.label.gii',['???','L_Medial_wall'])
     
@@ -161,19 +177,26 @@ def dist_calc_matrixGifti(AnatSurf, giftiLabel,exceptions,n_cpus=1):
     """
     print(f'using {n_cpus} cpus')
     surf=AnatomyInputParser(AnatSurf)
+    
+    labels,medialWall=LabelInputParser(LabelInput,hemi)
 
-    labels= load_gifti_labels(giftiLabel)
-    medialWall = labels['???']
-  
     ctx = np.array(range(len(surf[0])))
     cortex = np.delete(ctx, medialWall)
     
-    for i in exceptions:
-        del labels[i]
+    if len(exceptions)>0:
+        print(exceptions)
+        for i in exceptions.copy():
+            if i=='???':
+                pass
+            else:
+                del labels[i]
     
-    # remove exceptions from label list:
-    rois=labels
-    nodes= list(rois.values())
+    for l in labels.copy():
+        if labels[l].shape[0]==0:
+            print(l)
+            del labels[l]
+    
+    nodes= list(labels.values())
     params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
     
     with ProcessPool(processes=n_cpus) as pool:
@@ -182,10 +205,10 @@ def dist_calc_matrixGifti(AnatSurf, giftiLabel,exceptions,n_cpus=1):
     
      ###Calculate min distance per region:
     dist_mat = []
-    for roi in rois:
-        source_nodes=rois[roi]
+    for roi in labels:
+        source_nodes=labels[roi]
         translated_source_nodes = translate_src(source_nodes, cortex)
         dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
     dist_mat = np.array(dist_mat)
 
-    return dist_mat,list(rois.keys())
+    return dist_mat,list(labels.keys())
