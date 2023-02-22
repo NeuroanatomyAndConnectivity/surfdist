@@ -75,7 +75,7 @@ def load_cifti_labels(ciftiLabel,hemi):
     
     vertexValues=cifti.get_fdata().squeeze()
     if len(vertexValues)==(Lnverts+Rnverts):
-        print('this is NOT a HCP cifti. Labels are split by dimensions of total surface')
+        print('Running on a Non HCP CIFTI')
         LvertVals=vertexValues[0:Lnverts]
         RvertVals=vertexValues[Rnverts:]
 
@@ -85,15 +85,14 @@ def load_cifti_labels(ciftiLabel,hemi):
         MedialWall=rois.pop(0)
         LMedialWall=MedialWall[MedialWall<Lnverts]
         RMedialWall=MedialWall[MedialWall>Lnverts]-Rnverts
-        split=int(len(rois)/2)+1
         
-        Lrois=range(1,split)
-        Rrois=range(split,len(rois)+1)
-
+        Lrois=intSettoList(LvertVals)
+        Lrois.pop(0)
+        Rrois=intSettoList(RvertVals)
+        Rrois.pop(0)
         LlabelNodes={}
         for i in Lrois:
             LlabelNodes[axes[0].label[0][i][0]]=rois[i]
-
         
         RlabelNodes={}
         for i in Rrois:

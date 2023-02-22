@@ -114,28 +114,22 @@ def find_node_match(simple_vertices, complex_vertices):
 
     return voronoi_seed_idx, inaccuracy
 
-def roiDistance(source_nodes,cortex,cortex_vertices,cortex_triangles):  
-    """utility function that allows distance matrices to be run in parallel"""
-    translated_source_nodes = translate_src(source_nodes, cortex)
-    dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices=translated_source_nodes)
-    return dist
-
 #### to do add input parser 
 def AnatomyInputParser(data):
     """ Parses data input for anatomical surface data """
     if type(data)==tuple and len(data)==2:
-        print('using surface defined by tuple of vertices and faces')
+        # print('using surface defined by tuple of vertices and faces')
         surf=data
     elif type(data)==str:
         if 'gii' in data:
-            print('using gifti anatomical surface')
+            # print('using gifti anatomical surface')
             surf=(nib.load(data).darrays[0].data,nib.load(data).darrays[1].data)    
         else:
-            print('using freesurfer anatomical surface')
+            # print('using freesurfer anatomical surface')
             surf=nib.freesurfer.read_geometry(data)
     return surf
 
-def LabelInputParser(data,hemi):
+def LabelInputParser(data,hemi,exceptions=[]):
     """ Parses data input for label surface data """
     if type(data)==str:
         if 'gii' in data:
@@ -150,9 +144,16 @@ def LabelInputParser(data,hemi):
             del labels['???']
         elif '.annot' in data:
             print('using Freesurfer annotation')
-            labels=load_FS_annot(data)
-            medialWall=[]
+            if len(exceptions)>0:
+                labels=load_FS_annot(data)
+                medialWall=labels[exceptions[0]]
+            else:
+                labels=load_FS_annot(data)
+                medialWall=[]
     return labels,medialWall
+
+#### to do 
+### add the case where a user is adding data directly with a list of lists 
 
 
     # elif len(data)==3:

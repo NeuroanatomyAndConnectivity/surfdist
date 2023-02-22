@@ -1,7 +1,7 @@
 import gdist
 import numpy as np
 import nibabel as nib
-from surfdist.utils import surf_keep_cortex, translate_src, recort, roiDistance,AnatomyInputParser,LabelInputParser
+from surfdist.utils import surf_keep_cortex, translate_src, recort,AnatomyInputParser,LabelInputParser
 import surfdist as sd
 from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label, load_gifti_labels,load_FS_annot
 #### multiprocessing is used in cifti and gifti distance matrix calculations 
@@ -16,11 +16,7 @@ def dist_calc(surf, cortex, source_nodes, recortex=True, gifti=False):
     "dist_type" specifies whether to calculate "min", "mean", "median", or "max" distance values
     from a region-of-interest. If running only on single node, defaults to "min".
     """
-
-    if gifti !=False:
-        gii=nib.load(surf)
-        surf=(gii.darrays[0].data,gii.darrays[1].data)
-
+    surf=AnatomyInputParser(surf)
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
     translated_source_nodes = translate_src(source_nodes, cortex)
     dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
@@ -29,13 +25,12 @@ def dist_calc(surf, cortex, source_nodes, recortex=True, gifti=False):
 
     return dist
 
-def zone_calc(surf, cortex, source_nodes,gifti=False):
+def zone_calc(surf, cortex, source_nodes):
     """
     Calculate closest nodes to each source node using exact geodesic distance along the cortical surface.
     """
-    if gifti!=False:
-        gii=nib.load(surf)
-        surf=(gii.darrays[0].data,gii.darrays[1].data)
+    surf=AnatomyInputParser(surf)
+
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
 
     dist_vals = np.zeros((len(source_nodes), len(cortex_vertices)))
@@ -51,103 +46,7 @@ def zone_calc(surf, cortex, source_nodes,gifti=False):
 
     return zone
 
-
-def dist_calc_matrixFS(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall'], verbose = True):
-    """
-    Calculate exact geodesic distance along cortical surface from set of source nodes.
-    This function is speciffic to FreeSurfer inputs.
-    "labels" specifies the freesurfer label file to use. All values will be used other than those
-    specified in "exceptions" (default: 'Unknown' and 'Medial_Wall').
-    example: dist_calc_matrixFS(lh.pial,lh.cortex.label,lh.aparc.annot)
-    returns:
-      dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
-      rois: label names in order of n
-    """
-    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
-
-    # remove exceptions from label list:
-    label_list = get_freesurfer_label(labels, verbose = False)
-    tmp=[i.decode('utf-8') for i in label_list]
-    label_list=tmp
-    del tmp
-    label_list=list(set(label_list)-set(exceptions))
-
-
-    if verbose:
-        print("# of regions: " + str(len(label_list)))
-
-    
-    rois=[load_freesurfer_label(labels, roi) for roi in label_list]
-    rois=dict(zip(label_list,rois))
-   
-
-    nodes= list(rois.values())
-    params=[[nodes[i],cortex,cortex_vertices,cortex_triangles] for i in range(len(nodes))]
-    
-    ###calculate distance from each region to all nodes:
-    with ProcessPool(processes=n_cpus-1) as pool:
-        dist_roi=pool.starmap(roiDistance,params)
-    dist_roi=np.array(dist_roi)
-
-    ###Calculate min distance per region:
-    dist_mat = []
-    for roi in rois:
-        source_nodes = load_freesurfer_label(labels, roi)
-        translated_source_nodes = translate_src(source_nodes, cortex)
-        dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
-    dist_mat = np.array(dist_mat)
-
-    return dist_mat,list(rois.keys())
-
-def dist_calc_matrixCifti(surfGii, cifti, hemi):
-    """
-    Calculate exact geodesic distance along cortical surface from set of source nodes defined labels in a cifti file.
-    "labels" specifies the freesurfer label file to use. All labels in the cifti file except the medial wall will be used.
-    example dist_calc_matrixCifti('anat.surf.gii','cifti.dlabel.nii','L')
-    returns:
-      dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
-      rois: label names in order of n
-    """
-
-    gii = nib.load(surfGii)
-    surf = (gii.darrays[0].data, gii.darrays[1].data)
-
-    Llabels, Rlabels = load_cifti_labels(cifti)
-    ctx = np.array(range(len(surf[0])))
-
-    ### get cortex vertices and remove medial wall from label list 
-    if hemi == 'L':
-        medialWall = Llabels['???']
-        del Llabels['???']
-        labels = Llabels
-    elif hemi == 'R':
-        medialWall = Rlabels['???']
-        del Rlabels['???']
-        labels = Rlabels
-    cortex = np.delete(ctx, medialWall)
-
-    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
-
-    # remove exceptions from label list:
-    rois=labels
-    nodes= list(rois.values())
-    params=[[nodes[i],cortex,cortex_vertices,cortex_triangles] for i in range(len(nodes))]
-    
-    with ProcessPool(processes=n_cpus-1) as pool:
-        dist_roi=pool.starmap(roiDistance,params)
-    dist_roi=np.array(dist_roi)
-    
-     ###Calculate min distance per region:
-    dist_mat = []
-    for roi in rois:
-        source_nodes=rois[roi]
-        translated_source_nodes = translate_src(source_nodes, cortex)
-        dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
-    dist_mat = np.array(dist_mat)
-
-    return dist_mat,list(rois.keys())
-
-def dist_calc_matrixGifti(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None):
+def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None):
     """
     Calculate a distance matrix between a set of ROIs defined by a set of labels. 
     
@@ -157,7 +56,11 @@ def dist_calc_matrixGifti(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort
     Alternatively a tuple of len(2) containing the vertex indices and vertex faces can be passed. 
 
     LabelInput: Can be a gifti label file, cifti label file, or freesurfer annotation file. 
-    Alternatively list of lists where each index contains a set of labels and a set of source nodes matched at each index
+    Alternatively list containing three lists:
+    The first being the keyu values, the second the source nodes of the label, and the third a list of cortical vertices
+
+    USING FREESURFER ANNOTATIONS: You must specicy the medial wall label of the annotation you're using as the first entry in the exceptions list
+    Gifti and Cifti default to a medial wall key value of '???'
     
     hemi: the string 'L' or 'R' specifying which hemisphere the labels are being extracted from
 
@@ -165,11 +68,6 @@ def dist_calc_matrixGifti(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort
     There is no need to specify the medial wall. The function excludes that by default
 
     n_cpus: The number of cpus to use when calculating the distance matrix. 
-
-    fsCort: Required file mapping cortical vertices. required if using freesurfer files
-
-    YOU MUST PROVIDE A LIST OF EXCEPTIONS FOR AREAS NOT INCLUDED IN THE CALCUALATION BASED ON YOUR GIFTI FILE 
-    example: dist_calc_matrixGifti('anat.surf.gii','labels.label.gii',['???','L_Medial_wall'])
     
     returns:
       dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
@@ -177,8 +75,9 @@ def dist_calc_matrixGifti(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort
     """
     print(f'using {n_cpus} cpus')
     surf=AnatomyInputParser(AnatSurf)
-    
-    labels,medialWall=LabelInputParser(LabelInput,hemi)
+    print(exceptions)
+    labels,medialWall=LabelInputParser(LabelInput,hemi,exceptions)
+
 
     ctx = np.array(range(len(surf[0])))
     cortex = np.delete(ctx, medialWall)
@@ -192,18 +91,17 @@ def dist_calc_matrixGifti(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort
                 del labels[i]
     
     for l in labels.copy():
-        if labels[l].shape[0]==0:
-            print(l)
+        if labels[l].squeeze().shape[0]==0:
+            print(f'{l} is an empty label')
             del labels[l]
     
     nodes= list(labels.values())
-    params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
+    params=[[AnatSurf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
     
     with ProcessPool(processes=n_cpus) as pool:
         dist_roi=pool.starmap(dist_calc,params)
     dist_roi=np.array(dist_roi)
-    
-     ###Calculate min distance per region:
+     ##Calculate min distance per region:
     dist_mat = []
     for roi in labels:
         source_nodes=labels[roi]
