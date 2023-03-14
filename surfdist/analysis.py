@@ -46,7 +46,7 @@ def zone_calc(surf, cortex, source_nodes):
 
     return zone
 
-def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None):
+def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None,hires=False):
     """
     Calculate a distance matrix between a set of ROIs defined by a set of labels. 
     
@@ -81,21 +81,28 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
 
     ctx = np.array(range(len(surf[0])))
     cortex = np.delete(ctx, medialWall)
+    if hires==True:
+        nodes=list(cortex)
+        labels=dict(zip(nodes,nodes))
+
+        
+    else:
+
+        if len(exceptions)>0:
+            print(exceptions)
+            for i in exceptions.copy():
+                if i=='???':
+                    pass
+                else:
+                    del labels[i]
+        
+        for l in labels.copy():
+            if labels[l].squeeze().shape[0]==0:
+                print(f'{l} is an empty label')
+                del labels[l]
     
-    if len(exceptions)>0:
-        print(exceptions)
-        for i in exceptions.copy():
-            if i=='???':
-                pass
-            else:
-                del labels[i]
-    
-    for l in labels.copy():
-        if labels[l].squeeze().shape[0]==0:
-            print(f'{l} is an empty label')
-            del labels[l]
-    
-    nodes= list(labels.values())
+        nodes= list(labels.values())
+
     params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
     
     with ProcessPool(processes=n_cpus) as pool:
@@ -109,4 +116,7 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
         dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
     dist_mat = np.array(dist_mat)
 
-    return dist_mat,list(labels.keys())
+    if hires==False:
+        return dist_mat,list(labels.keys())
+    else:
+        return dist_mat,nodes
