@@ -9,7 +9,7 @@ from multiprocessing.pool import Pool as ProcessPool
 import multiprocessing
 
 
-def dist_calc(surf, cortex, source_nodes, recortex=True, gifti=False):
+def dist_calc(surf, cortex, source_nodes, recortex=True, gifti=False,maxDist=False):
 
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes.
@@ -19,7 +19,15 @@ def dist_calc(surf, cortex, source_nodes, recortex=True, gifti=False):
     surf=AnatomyInputParser(surf)
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
     translated_source_nodes = translate_src(source_nodes, cortex)
-    dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
+    ### check to see if we output ditance at all points or within a given radius
+    if maxDist==False:
+        dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
+        dist[~np.isfinite(dist)]=0 ### remove any nan's or infinities if they exist
+    else:
+        dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes,max_distance=maxDist)
+        dist[dist==np.max(dist)]=0
+
+    
     if recortex==True:
         dist = recort(dist, surf, cortex)
 
@@ -46,7 +54,7 @@ def zone_calc(surf, cortex, source_nodes):
 
     return zone
 
-def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None,hires=False):
+def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None,hires=False,maxDist=False):
     """
     Calculate a distance matrix between a set of ROIs defined by a set of labels. 
     
@@ -103,7 +111,12 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
     
         nodes= list(labels.values())
 
-    params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
+    if maxDist==False:
+        params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
+    else:
+        print('using MAXDIST')
+        # limit=f'maxDist={maxDist}'
+        params=[[surf,cortex,nodes[i],'recort=False','maxDist=',int(maxDist)] for i in range(len(nodes))]
     
     with ProcessPool(processes=n_cpus) as pool:
         dist_roi=pool.starmap(dist_calc,params)
