@@ -1,6 +1,5 @@
 Cython>=0.29.21
 numpy>=1.19.1
-numba>=0.50.1
 scipy>=1.5.2
 nibabel>=3.1.1
 tvb-gdist>=2.0.2
