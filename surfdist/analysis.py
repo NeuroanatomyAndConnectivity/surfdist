@@ -1,7 +1,7 @@
 import gdist
 import numpy as np
 import nibabel as nib
-from surfdist.utils import surf_keep_cortex, translate_src, recort,AnatomyInputParser,LabelInputParser
+from surfdist.utils import surf_keep_cortex, translate_src, recort,AnatomyInputParser,LabelInputParser, create_networkx_graph
 import surfdist as sd
 from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label, load_gifti_labels,load_FS_annot
 #### multiprocessing is used in cifti and gifti distance matrix calculations 
@@ -9,7 +9,7 @@ from multiprocessing.pool import Pool as ProcessPool
 import multiprocessing
 
 
-def dist_calc(surf, cortex, source_nodes, recortex=True, gifti=False,maxDist=False):
+def dist_calc(surf, cortex, source_nodes,recortex=True,maxDist=False):
 
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes.
@@ -85,10 +85,13 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
     surf=AnatomyInputParser(AnatSurf)
     print(exceptions)
     labels,medialWall=LabelInputParser(LabelInput,hemi,exceptions)
-
+    
 
     ctx = np.array(range(len(surf[0])))
     cortex = np.delete(ctx, medialWall)
+
+    #### let's edit to allow us to specify a cortex mask here. 
+
     if hires==True:
         nodes=list(cortex)
         labels=dict(zip(nodes,nodes))
@@ -133,3 +136,43 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
         return dist_mat,list(labels.keys())
     else:
         return dist_mat,nodes
+
+def GeoDistHeuristic(verts,faces,source,target):
+    print(source,target)
+    d=gdist.compute_gdist(verts,faces,np.array([source],dtype=np.int32),np.array([target],dtype=np.int32))
+    return d[0]
+
+import networkx as nx
+def shortest_path(surf,cortex,source,target,method='dijkstra'):
+    """ Calculate the shortest path on the cortex using NetworkX and dijkstra's algorithm
+    This function returns the vertices in the shortest path between two vertices on the surface.
+    It does not make use of the gdist package except for in loading the anatomical files. 
+    A cortex mask is required to ensure the mask does not run over the medial wall
+     Methods permit shortest path calculation with Dijkstra, bellman ford, or A*. 
+      A* may take longer due to the heuristic caluclation of geodesic iteraton between iterations. """
+    surf=AnatomyInputParser(surf)
+    
+    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
+    translated_source = translate_src(source, cortex)[0]
+    translated_target = translate_src(target, cortex)[0]
+    
+    Graph =create_networkx_graph(cortex_vertices, cortex_triangles)
+
+    if method=='dijkstra':
+        path=nx.shortest_path(Graph,translated_source,translated_target)
+    elif method=='bmf':
+        path=nx.shortest_path(Graph,translated_source,translated_target,method='bellman-ford')
+    elif method=='Astar':
+        path = nx.astar_path(Graph, translated_source, translated_target, 
+                         heuristic=lambda node1, node2: GeoDistHeuristic(cortex_vertices, cortex_triangles, node1, node2))
+    cortPath=[]
+    for p in path:
+        #### change to be the value of cort indexed by p
+        precort=np.zeros(len(cortex_vertices))
+        precort[p]=1
+        precort=recort(precort,surf,cortex)
+        cortPath.append(np.where(precort==1)[0])
+    cortPath=np.hstack(cortPath)
+
+    return cortPath
+    

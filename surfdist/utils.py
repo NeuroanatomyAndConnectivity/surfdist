@@ -152,6 +152,21 @@ def LabelInputParser(data,hemi,exceptions=[]):
                 medialWall=[]
     return labels,medialWall
 
+
+import networkx as nx
+
+def create_networkx_graph(vertices, faces):
+    """ creates a networkX graph representaiton of a cortical surface"""
+    G = nx.Graph()
+
+    for face in faces:
+        v1, v2, v3 = face
+        G.add_edge(v1, v2)
+        G.add_edge(v2, v3)
+        G.add_edge(v1, v3)
+
+    return G
+
 #### to do 
 ### add the case where a user is adding data directly with a list of lists 
 
