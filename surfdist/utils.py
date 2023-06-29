@@ -27,23 +27,43 @@ def surf_keep_cortex(surf, cortex):
     cortex_triangles = triangles_keep_cortex(triangles, cortex)
 
     return cortex_vertices, cortex_triangles
-
 def triangles_keep_cortex(triangles, cortex):
     """
     Remove triangles with nodes not contained in the cortex label array
+    This version iterates on the original allowing for users to use spun surfaces too
     """
 
-    # for or each face/triangle keep only those that only contain nodes within the list of cortex nodes
+    # for each face/triangle keep only those that only contain nodes within the list of cortex nodes
     input_shape = triangles.shape
     triangle_is_in_cortex = np.all(np.reshape(np.in1d(triangles.ravel(), cortex), input_shape), axis=1)
 
     cortex_triangles_old = np.array(triangles[triangle_is_in_cortex], dtype=np.int32)
 
-    # reassign node index before outputting triangles
-    new_index = np.digitize(cortex_triangles_old.ravel(), cortex, right=True)
-    cortex_triangles = np.array(np.arange(len(cortex))[new_index].reshape(cortex_triangles_old.shape), dtype=np.int32)
+    # Create a dictionary that maps the old node indices to the new ones
+    index_mapping = {old_index: new_index for new_index, old_index in enumerate(cortex)}
+
+    # Apply the mapping to the triangles
+    cortex_triangles = np.vectorize(index_mapping.get)(cortex_triangles_old)
 
     return cortex_triangles
+
+#### does not work on spun vertices as it requires monotonic increase which the spin destroys.
+# def triangles_keep_cortex(triangles, cortex):
+#     """
+#     Remove triangles with nodes not contained in the cortex label array
+#     """
+
+#     # for or each face/triangle keep only those that only contain nodes within the list of cortex nodes
+#     input_shape = triangles.shape
+#     triangle_is_in_cortex = np.all(np.reshape(np.in1d(triangles.ravel(), cortex), input_shape), axis=1)
+
+#     cortex_triangles_old = np.array(triangles[triangle_is_in_cortex], dtype=np.int32)
+
+#     # reassign node index before outputting triangles
+#     new_index = np.digitize(cortex_triangles_old.ravel(), cortex, right=True)
+#     cortex_triangles = np.array(np.arange(len(cortex))[new_index].reshape(cortex_triangles_old.shape), dtype=np.int32)
+
+#     return cortex_triangles
 
 def translate_src(src, cortex):
     """
