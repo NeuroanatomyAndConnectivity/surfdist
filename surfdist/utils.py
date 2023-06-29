@@ -43,7 +43,7 @@ def triangles_keep_cortex(triangles, cortex):
     index_mapping = {old_index: new_index for new_index, old_index in enumerate(cortex)}
 
     # Apply the mapping to the triangles
-    cortex_triangles = np.vectorize(index_mapping.get)(cortex_triangles_old)
+    cortex_triangles = np.vectorize(index_mapping.get)(cortex_triangles_old).astype(np.int32)
 
     return cortex_triangles
 
