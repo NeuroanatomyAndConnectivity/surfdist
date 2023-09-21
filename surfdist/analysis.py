@@ -33,6 +33,18 @@ def dist_calc(surf, cortex, source_nodes,recortex=True,maxDist=False):
 
     return dist
 
+def calc_roi_dist(surf, cortex, source_nodes, target_nodes,recortex=True,maxDist=False, dist_type = "min"):
+
+    dists = dist_calc(surf, cortex, source_nodes, recortex=recortex,maxDist=maxDist)
+    dists_to_target = dists[target_nodes]
+    if dist_type == 'min':
+        roi_dist = np.min(dists_to_target)
+    elif dist_type == 'mean':
+        roi_dist = np.mean(dists_to_target)
+    elif dist_type == 'max':
+        roi_dist = np.max(dists_to_target)
+    return roi_dist
+
 def zone_calc(surf, cortex, source_nodes):
     """
     Calculate closest nodes to each source node using exact geodesic distance along the cortical surface.
