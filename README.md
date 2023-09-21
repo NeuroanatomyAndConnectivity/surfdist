@@ -56,7 +56,7 @@ Gifti files:
 
     surf_labels = nib.load("fsLR.32k.L.label.gii")
     # pick only the vertices of the cortex, excluding the medial wall
-    cortex = np.where(labels.darrays[0].data != 0)[0]
+    cortex = np.where(surf_labels.darrays[0].data != 0)[0]
 
     surfL = nib.load("sub-1_hemi-L_inflated.32k_fs_LR.surf.gii")
     nodes = surfL.agg_data('NIFTI_INTENT_POINTSET')
