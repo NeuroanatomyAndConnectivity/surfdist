@@ -48,7 +48,7 @@ def dist_calc(surf, cortex, source_nodes,recortex=True,maxDist=None):
 
     return dist
 
-def calc_roi_dist(surf, cortex, source_nodes, target_nodes,recortex=True,maxDist=False, dist_type = "min"):
+def calc_roi_dist(surf, cortex, source_nodes, target_nodes,recortex=True,maxDist=None, dist_type = "min"):
     """
     Calculates the distance from ROI X to ROI Y.
 
@@ -74,7 +74,7 @@ def calc_roi_dist(surf, cortex, source_nodes, target_nodes,recortex=True,maxDist
     Returns
     -------
     roi_dist : float
-        Distance from ROI X to ROI Y.
+        Distance from ROI X (source) to ROI Y (target).
     """
 
     dists = dist_calc(surf, cortex, source_nodes, recortex=recortex,maxDist=maxDist)
