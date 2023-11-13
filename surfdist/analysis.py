@@ -9,29 +9,83 @@ from multiprocessing.pool import Pool as ProcessPool
 import multiprocessing
 
 
-def dist_calc(surf, cortex, source_nodes,recortex=True,maxDist=False):
-
+def dist_calc(surf, cortex, source_nodes,recortex=True,maxDist=None):
     """
-    Calculate exact geodesic distance along cortical surface from set of source nodes.
-    "dist_type" specifies whether to calculate "min", "mean", "median", or "max" distance values
-    from a region-of-interest. If running only on single node, defaults to "min".
+    Calculates distances from source_nodes to all other nodes on the cortical surface.
+
+    Parameters
+    ----------
+    surf : Tuple containing two numpy arrays of shape (n_nodes,3). Each node of the first array specifies the x, y, z
+           coordinates one node of the surface mesh. Each node of the second array specifies the indices of the three
+           nodes building one triangle of the surface mesh.
+    cortex : str
+        Array with indices of vertices included in within the cortex(e.g., the output from nibabel.freesurfer.io.read_label).
+    source_nodes : array_like
+        The indices of the nodes which constitute the ROI.
+    recortex : bool, optional
+        Whether to return distance values in the space of full cortex (including medial wall), with medial wall equal to zero. Default is True.
+    maxDist : float, optional
+        The maximum distance threshold: the propagation algorithm will stop when it reaches this value. Default is None.
+
+    Returns
+    -------
+    dist : ndarray
+        Array of distances from the source nodes (ROI).
     """
     surf=AnatomyInputParser(surf)
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
     translated_source_nodes = translate_src(source_nodes, cortex)
     ### check to see if we output ditance at all points or within a given radius
-    if maxDist==False:
+    if maxDist is None:
         dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
         dist[~np.isfinite(dist)]=0 ### remove any nan's or infinities if they exist
     else:
         dist = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes,max_distance=maxDist)
         dist[dist==np.max(dist)]=0
 
-    
     if recortex==True:
         dist = recort(dist, surf, cortex)
 
     return dist
+
+def calc_roi_dist(surf, cortex, source_nodes, target_nodes,recortex=True,maxDist=None, dist_type = "min"):
+    """
+    Calculates the distance from ROI X to ROI Y.
+
+    Parameters
+    ----------
+    surf : Tuple containing two numpy arrays of shape (n_nodes,3). Each node of the first array specifies the x, y, z
+           coordinates one node of the surface mesh. Each node of the second array specifies the indices of the three
+           nodes building one triangle of the surface mesh.
+    cortex : str
+        Array with indices of vertices included in within the cortex(e.g., the output from nibabel.freesurfer.io.read_label).
+    source_nodes : array_like
+        The indices of the nodes which constitute ROI X.
+    target_nodes : array_like
+        The indices of the nodes which constitute ROI Y.
+    recortex : bool, optional
+        Whether to return distance value in the space of full cortex (including medial wall), with medial wall equal to zero. Default is True.
+    maxDist : float, optional
+        The maximum distance threshold. Default is None.
+    dist_type : str, optional
+        The type of distance to calculate. Default is "min", which calculates the shortest distance from ROI X to ROI Y. 
+        "mean" calculates the mean distance and "max" calculates the maximum distance from ROI X to ROI Y.
+
+    Returns
+    -------
+    roi_dist : float
+        Distance from ROI X (source) to ROI Y (target).
+    """
+
+    dists = dist_calc(surf, cortex, source_nodes, recortex=recortex,maxDist=maxDist)
+    dists_to_target = dists[target_nodes]
+    if dist_type == 'min':
+        roi_dist = np.min(dists_to_target)
+    elif dist_type == 'mean':
+        roi_dist = np.mean(dists_to_target)
+    elif dist_type == 'max':
+        roi_dist = np.max(dists_to_target)
+    return roi_dist
 
 def zone_calc(surf, cortex, source_nodes):
     """

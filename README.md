@@ -11,6 +11,7 @@ Installation
 
 Example
 -------
+Freesurfer files:
 
     import nibabel as nib
     import numpy as np
@@ -47,3 +48,29 @@ Example
     plot_fsa4_lat = sd.viz.viz(surf_fsa4[0], surf_fsa4[1], dist[idx_fsa4_to_native], azim=180, bg_map=fsa4_sulc, bg_on_stat=True, cmap=cmap)
 
     plt.show()
+
+Gifti files:
+
+    import surfdist as sd
+    from surfdist import viz, load, utils, analysis
+
+    surf_labels = nib.load("fsLR.32k.L.label.gii")
+    # pick only the vertices of the cortex, excluding the medial wall
+    cortex = np.where(surf_labels.darrays[0].data != 0)[0]
+
+    surfL = nib.load("sub-1_hemi-L_inflated.32k_fs_LR.surf.gii")
+    nodes = surfL.agg_data('NIFTI_INTENT_POINTSET')
+    triangles = surfL.agg_data('NIFTI_INTENT_TRIANGLE')
+    surf = (nodes, triangles)
+
+    destrieux = nib.load("destrieux-labels_den-32k_hemi-L.label.gii").darrays[0].data
+
+    # pick only the vertices of A1 and angular gyrus.
+    a1_vrtx = np.where(destrieux == 32)[0]
+    angG_vrtx = np.where(destrieux == 24)[0]
+
+    # calculate distances from A1 to the rest of the vertices
+    all_dist = analysis.dist_calc(surf, cortex, a1_vrtx)
+    # calculate the shortest distance from A1 to angular gyrus
+    dist_min = anaysis.dist_calc(surf, cortex, a1_vrtx, angG_vrtx)
+
