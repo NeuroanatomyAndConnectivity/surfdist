@@ -18,6 +18,8 @@ def load_freesurfer_label(annot_input, label_name, cortex=None):
 
     labels, color_table, names = nib.freesurfer.read_annot(annot_input)
     names = [i.decode('utf-8') for i in names]
+    if isinstance(label_name, bytes):
+        label_name = label_name.decode('utf-8')
     label_value = names.index(label_name)
     label_nodes = np.array(np.where(np.in1d(labels, label_value)), dtype=np.int32)
 

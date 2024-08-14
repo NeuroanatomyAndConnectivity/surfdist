@@ -1,6 +1,7 @@
 import gdist
 import numpy as np
 from surfdist.utils import surf_keep_cortex, translate_src, recort
+from surfdist import load
 
 
 def dist_calc(surf, cortex, source_nodes):
@@ -43,11 +44,12 @@ def zone_calc(surf, cortex, src):
     return zone
 
 
-def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall'], verbose = True):
+def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall'], summary = 'min', verbose = True):
     """
     Calculate exact geodesic distance along cortical surface from set of source nodes.
     "labels" specifies the freesurfer label file to use. All values will be used other than those
     specified in "exceptions" (default: 'Unknown' and 'Medial_Wall').
+    summary defines how the distances are summarized with suppoted values: 'min', 'mean', 'median', 'max'
 
     returns:
       dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
@@ -57,7 +59,7 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
 
     # remove exceptions from label list:
-    label_list = sd.load.get_freesurfer_label(labels, verbose = False)
+    label_list = load.get_freesurfer_label(labels, verbose = False)
     rs = np.where([a not in exceptions for a in label_list])[0]
     rois = [label_list[r] for r in rs]
     if verbose:
@@ -66,7 +68,7 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
     # calculate distance from each region to all nodes:
     dist_roi = []
     for roi in rois:
-        source_nodes = sd.load.load_freesurfer_label(labels, roi)
+        source_nodes = load.load_freesurfer_label(labels, roi)
         translated_source_nodes = translate_src(source_nodes, cortex)
         dist_roi.append(gdist.compute_gdist(cortex_vertices, cortex_triangles,
                                                 source_indices = translated_source_nodes))
@@ -77,9 +79,18 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
     # Calculate min distance per region:
     dist_mat = []
     for roi in rois:
-        source_nodes = sd.load.load_freesurfer_label(labels, roi)
+        source_nodes = load.load_freesurfer_label(labels, roi)
         translated_source_nodes = translate_src(source_nodes, cortex)
-        dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
+        if summary == 'min':
+            dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
+        elif summary == 'mean':
+            dist_mat.append(np.mean(dist_roi[:,translated_source_nodes], axis = 1))
+        elif summary == 'median':
+            dist_mat.append(np.median(dist_roi[:,translated_source_nodes], axis = 1))
+        elif summary == 'max':
+            dist_mat.append(np.max(dist_roi[:,translated_source_nodes], axis = 1))
+        else:
+            raise(f'undefined summary: {summary}')
     dist_mat = np.array(dist_mat)
 
     return dist_mat, rois
