@@ -1,12 +1,14 @@
 import gdist
 import numpy as np
 import nibabel as nib
-from surfdist.utils import surf_keep_cortex, translate_src, recort,AnatomyInputParser,LabelInputParser, create_networkx_graph
+import multiprocessing
 import surfdist as sd
+from surfdist.utils import surf_keep_cortex, translate_src, recort,AnatomyInputParser,LabelInputParser, create_networkx_graph
 from surfdist.load import load_cifti_labels,load_freesurfer_label,get_freesurfer_label, load_gifti_labels,load_FS_annot
 #### multiprocessing is used in cifti and gifti distance matrix calculations 
 from multiprocessing.pool import Pool as ProcessPool
-import multiprocessing
+from scipy.spatial.distance import cdist
+
 
 
 def dist_calc(surf, cortex, source_nodes,recortex=True,maxDist=None):
@@ -108,7 +110,7 @@ def zone_calc(surf, cortex, source_nodes):
 
     return zone
 
-def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None,hires=False,maxDist=False):
+def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None,hires=False,maxDist=False,centroid=False):
     """
     Calculate a distance matrix between a set of ROIs defined by a set of labels. 
     
@@ -140,7 +142,6 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
     print(exceptions)
     labels,medialWall=LabelInputParser(LabelInput,hemi,exceptions)
     
-
     ctx = np.array(range(len(surf[0])))
     cortex = np.delete(ctx, medialWall)
 
@@ -165,8 +166,22 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
             if labels[l].squeeze().shape[0]==0:
                 print(f'{l} is an empty label')
                 del labels[l]
-    
-        nodes= list(labels.values())
+        if centroid:
+            #### we need to edit labels dictoinary here
+            vtx_coords=surf[0]
+            print('using parcel centroids for distance calculation')
+            nodes= list(labels.values())
+            centroid_labels={}
+            for parcel in labels.keys():
+                p_verts=labels[parcel]
+                p_coords=vtx_coords[p_verts]
+                centroid_crd=np.mean(p_coords,axis=0)
+                dists = cdist(p_coords, centroid_crd[None, :], metric='euclidean')
+                centroid_vertex=labels[parcel][np.argmin(dists)]
+                centroid_labels[parcel]=centroid_vertex
+            nodes=list(centroid_labels.values())
+        else:
+            nodes= list(labels.values())
 
     if maxDist==False:
         params=[[surf,cortex,nodes[i],'recort=False'] for i in range(len(nodes))]
@@ -179,6 +194,10 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
         dist_roi=pool.starmap(dist_calc,params)
     dist_roi=np.array(dist_roi)
      ##Calculate min distance per region:
+
+    if centroid:
+        labels=centroid_labels 
+
     dist_mat = []
     for roi in labels:
         source_nodes=labels[roi]
