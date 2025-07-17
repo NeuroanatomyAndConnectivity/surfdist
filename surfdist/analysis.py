@@ -132,6 +132,12 @@ def dist_calc_matrix(AnatSurf,LabelInput,hemi,exceptions=[],n_cpus=1,fsCort=None
     There is no need to specify the medial wall. The function excludes that by default
 
     n_cpus: The number of cpus to use when calculating the distance matrix. 
+
+    fsCort: medial wall label for freesurfer files
+
+    maxDist: return the maximum distance between two parcels
+
+    centroid: If True, use the centroid of each parcel when calculating the distance matrix
     
     returns:
       dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
