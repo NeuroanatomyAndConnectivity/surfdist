@@ -135,3 +135,101 @@ def load_cifti_labels(cifti_label, hemi, medial_wall_key='???'):
         out[medial_wall_key] = medial_indices  # empty array
 
     return out
+
+
+def load_surface(surface):
+    """
+    Load a cortical surface from a path, or pass a pre-built tuple through.
+
+    Inputs
+    -------
+    surface : tuple, str, or path-like
+        Either a ``(vertices, triangles)`` tuple already in surfdist's
+        expected format, a freesurfer geometry filename (e.g. ``lh.pial``),
+        or a path to a GIFTI surface file (``*.surf.gii``).
+
+    Returns
+    -------
+    surf : (vertices, triangles) tuple
+    """
+    if isinstance(surface, tuple) and len(surface) == 2:
+        return surface
+    if not (isinstance(surface, (str, bytes)) or hasattr(surface, '__fspath__')):
+        raise TypeError(
+            f"surface must be a (vertices, triangles) tuple or a path, "
+            f"got {type(surface).__name__}"
+        )
+    path = str(surface)
+    if path.endswith('.surf.gii'):
+        gii = nib.load(path)
+        return (gii.darrays[0].data, gii.darrays[1].data)
+    return nib.freesurfer.read_geometry(path)
+
+
+def _load_freesurfer_annot_dict(annot_path):
+    """Read a freesurfer annot into ``{label_name: vertex_indices}``."""
+    label_data, _ctab, names = nib.freesurfer.read_annot(annot_path)
+    decoded = [n.decode('utf-8') if isinstance(n, (bytes, bytearray)) else n
+               for n in names]
+    return {
+        name: np.where(label_data == idx)[0]
+        for idx, name in enumerate(decoded)
+    }
+
+
+def load_labels(labels, hemi=None, exceptions=()):
+    """
+    Load parcel labels from a freesurfer ``.annot``, GIFTI ``.label.gii``,
+    or CIFTI ``.dlabel.nii`` file, dispatching by extension.
+
+    Inputs
+    -------
+    labels : str or path-like
+        Path to the label file.
+    hemi : {'L', 'R'} or None
+        Required for CIFTI dlabel files; ignored otherwise.
+    exceptions : iterable of str
+        Label names to drop from the returned dict. For freesurfer annots
+        only, the first entry doubles as the medial-wall label (since
+        annots have no built-in '???' key).
+
+    Returns
+    -------
+    label_nodes : dict
+        ``{label_name: vertex_indices}`` for non-medial-wall labels.
+    medial_wall : ndarray
+        Vertex indices of the medial wall (empty if the file does not
+        encode one).
+    """
+    path = str(labels)
+    exceptions = list(exceptions)
+
+    if path.endswith('.label.gii'):
+        nodes = load_gifti_labels(path)
+    elif path.endswith('.dlabel.nii'):
+        if hemi is None:
+            raise ValueError(
+                "hemi must be 'L' or 'R' for a CIFTI dlabel file"
+            )
+        nodes = load_cifti_labels(path, hemi)
+    elif path.endswith('.annot'):
+        nodes = _load_freesurfer_annot_dict(path)
+    else:
+        raise ValueError(
+            f"unrecognized label file extension: {path!r} "
+            "(expected .label.gii, .dlabel.nii, or .annot)"
+        )
+
+    medial_key = '???'
+    if medial_key in nodes:
+        medial_wall = nodes.pop(medial_key)
+    elif exceptions and exceptions[0] in nodes:
+        medial_wall = nodes.pop(exceptions[0])
+        exceptions = exceptions[1:]
+    else:
+        medial_wall = np.array([], dtype=np.int64)
+
+    for ex in exceptions:
+        nodes.pop(ex, None)
+
+    return nodes, medial_wall
