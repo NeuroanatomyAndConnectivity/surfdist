@@ -22,6 +22,44 @@ def test_dist_calc_zero_at_source(grid_surface, full_cortex):
     assert (dist >= 0).all()
 
 
+def test_dist_calc_max_distance_matches_unbounded_when_large(
+    grid_surface, full_cortex
+):
+    """A max_distance larger than the longest pair preserves all values."""
+    verts, tris, _ = grid_surface
+    src = np.array([0], dtype=np.int32)
+    unbounded = dist_calc((verts, tris), full_cortex, src)
+    bounded = dist_calc((verts, tris), full_cortex, src, max_distance=10.0)
+    np.testing.assert_allclose(bounded, unbounded, atol=1e-10)
+
+
+def test_dist_calc_max_distance_truncates(grid_surface, full_cortex):
+    """Vertices beyond max_distance are no longer set to their true distance."""
+    verts, tris, _ = grid_surface
+    src = np.array([0], dtype=np.int32)
+    bounded = dist_calc((verts, tris), full_cortex, src, max_distance=2.0)
+    # Vertex 15 is sqrt(18) ~ 4.24 away; with cutoff 2 it must be > 2 (sentinel)
+    # or equivalently: not equal to the unbounded distance.
+    unbounded = dist_calc((verts, tris), full_cortex, src)
+    assert bounded[15] != unbounded[15]
+    # Vertices within the cutoff still get correct values
+    np.testing.assert_allclose(bounded[1], unbounded[1], atol=1e-10)
+    np.testing.assert_allclose(bounded[4], unbounded[4], atol=1e-10)
+
+
+def test_dist_calc_recortex_false_returns_cortex_space(
+    grid_surface, partial_cortex
+):
+    """recortex=False returns an array spanning only the cortex."""
+    verts, tris, _ = grid_surface
+    src = np.array([0], dtype=np.int32)
+    full = dist_calc((verts, tris), partial_cortex, src, recortex=True)
+    cortex_only = dist_calc((verts, tris), partial_cortex, src, recortex=False)
+    assert cortex_only.shape == (len(partial_cortex),)
+    # The cortex-space values should equal full[partial_cortex]
+    np.testing.assert_allclose(cortex_only, full[partial_cortex], atol=1e-10)
+
+
 def test_dist_calc_recorts_to_full_surface(grid_surface, partial_cortex):
     """Returned array spans the full surface; medial-wall vertices read 0."""
     verts, tris, N = grid_surface

@@ -4,21 +4,49 @@ from surfdist.utils import surf_keep_cortex, translate_src, recort
 from surfdist import load
 
 
-def dist_calc(surf, cortex, source_nodes):
-
+def dist_calc(surf, cortex, source_nodes, max_distance=None, recortex=True):
     """
-    Calculate exact geodesic distance along cortical surface from set of source nodes.
-    "dist_type" specifies whether to calculate "min", "mean", "median", or "max" distance values
-    from a region-of-interest. If running only on single node, defaults to "min".
-    """
+    Calculate exact geodesic distance along the cortical surface from a set
+    of source nodes to every other node.
 
+    Inputs
+    -------
+    surf : (vertices, triangles) tuple as returned by
+           ``nibabel.freesurfer.read_geometry`` or
+           ``(gii.darrays[0].data, gii.darrays[1].data)`` for a gifti.
+    cortex : array of cortex vertex indices (medial wall excluded).
+    source_nodes : indices of vertices in the source ROI.
+    max_distance : float or None, optional
+        If provided, geodesic propagation stops at this distance.
+        Vertices unreachable within the threshold are returned as a
+        large sentinel value by gdist; callers can mask them with
+        ``dist > max_distance``. Default ``None`` (no limit).
+    recortex : bool, default True
+        If True, the returned array spans the full surface (medial-wall
+        vertices read 0). If False, the returned array spans only the
+        cortex (in cortex-vertex order); useful when ``dist_calc`` is
+        called as an inner loop and recortexing is wasted work.
+
+    Returns
+    -------
+    dist : ndarray
+    """
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
     translated_source_nodes = translate_src(source_nodes, cortex)
-    data = gdist.compute_gdist(cortex_vertices, cortex_triangles, source_indices = translated_source_nodes)
-    dist = recort(data, surf, cortex)
-    del data
-
-    return dist
+    if max_distance is None:
+        data = gdist.compute_gdist(
+            cortex_vertices, cortex_triangles,
+            source_indices=translated_source_nodes,
+        )
+    else:
+        data = gdist.compute_gdist(
+            cortex_vertices, cortex_triangles,
+            source_indices=translated_source_nodes,
+            max_distance=float(max_distance),
+        )
+    if recortex:
+        return recort(data, surf, cortex)
+    return data
 
 
 def calc_roi_dist(surf, cortex, source_nodes, target_nodes, summary='min'):
