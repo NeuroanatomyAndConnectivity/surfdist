@@ -12,6 +12,8 @@ Installation
 Example
 -------
 
+Freesurfer files:
+
     import nibabel as nib
     import numpy as np
     import matplotlib.pyplot as plt
@@ -47,3 +49,26 @@ Example
     plot_fsa4_lat = sd.viz.viz(surf_fsa4[0], surf_fsa4[1], dist[idx_fsa4_to_native], azim=180, bg_map=fsa4_sulc, bg_on_stat=True, cmap=cmap)
 
     plt.show()
+
+Gifti files:
+
+    import nibabel as nib
+    import numpy as np
+    from surfdist import analysis
+
+    # cortex mask: nonzero vertices of a hemisphere label
+    surf_labels = nib.load("fsLR.32k.L.label.gii")
+    cortex = np.where(surf_labels.darrays[0].data != 0)[0]
+
+    # surface as (vertices, triangles) tuple
+    surfL = nib.load("sub-1_hemi-L_inflated.32k_fs_LR.surf.gii")
+    nodes = surfL.agg_data('NIFTI_INTENT_POINTSET')
+    triangles = surfL.agg_data('NIFTI_INTENT_TRIANGLE')
+    surf = (nodes, triangles)
+
+    # source ROI from a parcellation label file
+    destrieux = nib.load("destrieux-labels_den-32k_hemi-L.label.gii").darrays[0].data
+    a1_vrtx = np.where(destrieux == 32)[0]
+
+    # calculate distances from A1 to the rest of the vertices
+    all_dist = analysis.dist_calc(surf, cortex, a1_vrtx)
