@@ -1,7 +1,12 @@
 import nibabel as nib
 import numpy as np
+from nibabel.gifti import GiftiDataArray, GiftiImage, GiftiLabel, GiftiLabelTable
 
-from surfdist.load import get_freesurfer_label, load_freesurfer_label
+from surfdist.load import (
+    get_freesurfer_label,
+    load_freesurfer_label,
+    load_gifti_labels,
+)
 
 
 def _write_fake_annot(path, n_vertices=16):
@@ -40,3 +45,40 @@ def test_load_freesurfer_label_accepts_bytes(tmp_path):
     # The implementation has a special-case for bytes label_name (added by 615bc01)
     nodes = load_freesurfer_label(str(annot), b'Cortex')
     assert nodes.size == 12
+
+
+def _write_fake_gifti_labels(path, label_data, label_name_by_key):
+    """Build a minimal gifti label file with the given per-vertex labels."""
+    darr = GiftiDataArray(
+        np.asarray(label_data, dtype=np.int32),
+        intent='NIFTI_INTENT_LABEL',
+        datatype='NIFTI_TYPE_INT32',
+    )
+    lt = GiftiLabelTable()
+    for key, name in label_name_by_key.items():
+        gl = GiftiLabel(key=key)
+        gl.label = name
+        lt.labels.append(gl)
+    img = GiftiImage(labeltable=lt, darrays=[darr])
+    img.to_filename(str(path))
+
+
+def test_load_gifti_labels_returns_name_to_indices(tmp_path):
+    path = tmp_path / 'lh.test.label.gii'
+    data = np.array([0, 0, 1, 1, 2, 2, 2, 2], dtype=np.int32)
+    _write_fake_gifti_labels(path, data, {0: 'medial', 1: 'A', 2: 'B'})
+
+    result = load_gifti_labels(str(path))
+    assert set(result.keys()) == {'medial', 'A', 'B'}
+    np.testing.assert_array_equal(result['medial'], [0, 1])
+    np.testing.assert_array_equal(result['A'], [2, 3])
+    np.testing.assert_array_equal(result['B'], [4, 5, 6, 7])
+
+
+def test_load_gifti_labels_handles_missing_label(tmp_path):
+    """A label declared in the table but absent from data returns an empty array."""
+    path = tmp_path / 'lh.empty.label.gii'
+    data = np.array([0, 0, 1, 1], dtype=np.int32)
+    _write_fake_gifti_labels(path, data, {0: 'medial', 1: 'A', 2: 'B'})
+    result = load_gifti_labels(str(path))
+    assert result['B'].size == 0

@@ -34,3 +34,24 @@ def get_freesurfer_label(annot_input, verbose = True):
     if verbose:
         print(names)
     return names
+
+
+def load_gifti_labels(gifti_label):
+    """
+    Get a mapping of label name -> vertex indices from a GIFTI label file.
+
+    Inputs
+    -------
+    gifti_label : str or path-like
+        Path to a hemisphere-specific GIFTI label file (e.g. ``*.label.gii``).
+
+    Returns
+    -------
+    label_nodes : dict
+        Dictionary mapping each label name to a 1-D numpy array of vertex
+        indices belonging to that label.
+    """
+    gii = nib.load(gifti_label)
+    data = gii.darrays[0].data
+    key_to_name = gii.labeltable.get_labels_as_dict()
+    return {name: np.where(data == key)[0] for key, name in key_to_name.items()}
