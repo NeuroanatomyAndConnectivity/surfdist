@@ -2,7 +2,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from surfdist.analysis import dist_calc, dist_calc_matrix
+from surfdist.analysis import calc_roi_dist, dist_calc, dist_calc_matrix
 
 
 def test_dist_calc_planar_equals_euclidean(grid_surface, full_cortex):
@@ -79,6 +79,54 @@ def test_dist_calc_matrix_min_is_symmetric_for_disjoint_rows(
         exceptions=[], summary='min', verbose=False,
     )
     np.testing.assert_allclose(mat, mat.T, atol=1e-10)
+
+
+def test_calc_roi_dist_min_corner_to_corner(grid_surface, full_cortex):
+    """ROI {0} to ROI {15} on the planar grid: exact geodesic = sqrt(18)."""
+    verts, tris, _ = grid_surface
+    d = calc_roi_dist((verts, tris), full_cortex,
+                      np.array([0], dtype=np.int32),
+                      np.array([15], dtype=np.int32),
+                      summary='min')
+    np.testing.assert_allclose(d, np.sqrt(18), atol=1e-10)
+
+
+def test_calc_roi_dist_min_picks_nearest_target(grid_surface, full_cortex):
+    """Source {0}, targets {12, 15}: min picks the closer target (vertex 12)."""
+    verts, tris, _ = grid_surface
+    d = calc_roi_dist((verts, tris), full_cortex,
+                      np.array([0], dtype=np.int32),
+                      np.array([12, 15], dtype=np.int32),
+                      summary='min')
+    # vertex 12 is at (0, 3): distance from (0,0) = 3
+    np.testing.assert_allclose(d, 3.0, atol=1e-10)
+
+
+def test_calc_roi_dist_max_picks_farthest_target(grid_surface, full_cortex):
+    verts, tris, _ = grid_surface
+    d = calc_roi_dist((verts, tris), full_cortex,
+                      np.array([0], dtype=np.int32),
+                      np.array([12, 15], dtype=np.int32),
+                      summary='max')
+    np.testing.assert_allclose(d, np.sqrt(18), atol=1e-10)
+
+
+def test_calc_roi_dist_mean(grid_surface, full_cortex):
+    verts, tris, _ = grid_surface
+    d = calc_roi_dist((verts, tris), full_cortex,
+                      np.array([0], dtype=np.int32),
+                      np.array([12, 15], dtype=np.int32),
+                      summary='mean')
+    np.testing.assert_allclose(d, (3.0 + np.sqrt(18)) / 2, atol=1e-10)
+
+
+def test_calc_roi_dist_unknown_summary_raises(grid_surface, full_cortex):
+    verts, tris, _ = grid_surface
+    with pytest.raises(ValueError, match='unknown summary'):
+        calc_roi_dist((verts, tris), full_cortex,
+                      np.array([0], dtype=np.int32),
+                      np.array([15], dtype=np.int32),
+                      summary='bogus')
 
 
 def test_dist_calc_matrix_excludes_medial_wall(

@@ -21,6 +21,41 @@ def dist_calc(surf, cortex, source_nodes):
     return dist
 
 
+def calc_roi_dist(surf, cortex, source_nodes, target_nodes, summary='min'):
+    """
+    Geodesic distance from source ROI X to target ROI Y, summarized to a scalar.
+
+    Inputs
+    -------
+    surf : (vertices, triangles) tuple. See dist_calc.
+    cortex : array of cortex vertex indices.
+    source_nodes : indices of vertices in ROI X (the propagation source).
+    target_nodes : indices of vertices in ROI Y (where distances are sampled).
+    summary : str, one of 'min', 'mean', 'median', 'max'. How distances
+              from each target vertex back to the source set are reduced
+              into a single ROI-to-ROI value. Default 'min' (the
+              conventional shortest distance between regions).
+
+    Returns
+    -------
+    roi_dist : float
+    """
+    dists = dist_calc(surf, cortex, source_nodes)
+    dists_to_target = dists[np.asarray(target_nodes).ravel()]
+    if summary == 'min':
+        return float(np.min(dists_to_target))
+    if summary == 'mean':
+        return float(np.mean(dists_to_target))
+    if summary == 'median':
+        return float(np.median(dists_to_target))
+    if summary == 'max':
+        return float(np.max(dists_to_target))
+    raise ValueError(
+        f"unknown summary {summary!r}; expected one of "
+        "['min', 'mean', 'median', 'max']"
+    )
+
+
 def zone_calc(surf, cortex, src):
     """
     Calculate closest nodes to each source node using exact geodesic distance along the cortical surface.

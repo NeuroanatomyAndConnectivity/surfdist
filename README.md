@@ -66,9 +66,12 @@ Gifti files:
     triangles = surfL.agg_data('NIFTI_INTENT_TRIANGLE')
     surf = (nodes, triangles)
 
-    # source ROI from a parcellation label file
+    # source and target ROIs from a parcellation label file
     destrieux = nib.load("destrieux-labels_den-32k_hemi-L.label.gii").darrays[0].data
     a1_vrtx = np.where(destrieux == 32)[0]
+    angG_vrtx = np.where(destrieux == 24)[0]
 
     # calculate distances from A1 to the rest of the vertices
     all_dist = analysis.dist_calc(surf, cortex, a1_vrtx)
+    # calculate the shortest distance from A1 to angular gyrus
+    dist_min = analysis.calc_roi_dist(surf, cortex, a1_vrtx, angG_vrtx)
