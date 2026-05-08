@@ -180,3 +180,84 @@ def test_dist_calc_matrix_excludes_medial_wall(
     )
     assert 'A' not in rois
     assert mat.shape == (3, 3)
+
+
+def test_dist_calc_matrix_unknown_summary_raises(
+    grid_surface, full_cortex, tmp_path
+):
+    verts, tris, _ = grid_surface
+    annot = tmp_path / 'grid.annot'
+    _write_quadrant_annot(annot)
+    with pytest.raises(ValueError, match='unknown summary'):
+        dist_calc_matrix(
+            (verts, tris), full_cortex, str(annot),
+            exceptions=[], summary='bogus', verbose=False,
+        )
+
+
+def _write_two_parcel_annot(path):
+    """Two corner-parcels A={0,1} and B={14,15} on a 4x4 grid; rest = 'Other'."""
+    labels = np.full(16, 2, dtype=np.int32)
+    labels[[0, 1]] = 0
+    labels[[14, 15]] = 1
+    ctab = np.array([
+        [10, 10, 10, 0, 0],
+        [20, 20, 20, 0, 1],
+        [30, 30, 30, 0, 2],
+    ], dtype=np.int32)
+    names = [b'A', b'B', b'Other']
+    nib.freesurfer.io.write_annot(str(path), labels, ctab, names)
+
+
+def test_dist_calc_matrix_centroid_uses_parcel_center(
+    grid_surface, full_cortex, tmp_path
+):
+    """
+    A = vertices 0,1 -> centroid vertex 0 at (0,0).
+    B = vertices 14,15 -> centroid vertex 14 at (2,3).
+    Centroid-mode A->B distance is d(0,14) = sqrt(13).
+    Set-mode min A->B distance is d(1,14) = sqrt(10)
+        (delta (1,3) from vertex 1 at (1,0) to vertex 14 at (2,3)).
+    """
+    verts, tris, _ = grid_surface
+    annot = tmp_path / 'two_parcels.annot'
+    _write_two_parcel_annot(annot)
+
+    mat_set, rois_set = dist_calc_matrix(
+        (verts, tris), full_cortex, str(annot),
+        exceptions=['Other'], summary='min', verbose=False, centroid=False,
+    )
+    mat_cent, rois_cent = dist_calc_matrix(
+        (verts, tris), full_cortex, str(annot),
+        exceptions=['Other'], summary='min', verbose=False, centroid=True,
+    )
+    assert rois_set == rois_cent  # ordering is preserved
+
+    # Both diagonals must be 0
+    np.testing.assert_array_equal(np.diag(mat_set), 0)
+    np.testing.assert_array_equal(np.diag(mat_cent), 0)
+
+    # Pre-computable ground truths
+    np.testing.assert_allclose(mat_set[0, 1], np.sqrt(10), atol=1e-10)
+    np.testing.assert_allclose(mat_cent[0, 1], np.sqrt(13), atol=1e-10)
+
+    # Centroid mode is symmetric on a flat mesh
+    np.testing.assert_allclose(mat_cent, mat_cent.T, atol=1e-10)
+
+
+def test_dist_calc_matrix_centroid_default_is_unchanged(
+    grid_surface, full_cortex, tmp_path
+):
+    """centroid=False (default) must reproduce the master's behavior exactly."""
+    verts, tris, _ = grid_surface
+    annot = tmp_path / 'grid.annot'
+    _write_quadrant_annot(annot)
+    mat_default, _ = dist_calc_matrix(
+        (verts, tris), full_cortex, str(annot),
+        exceptions=[], summary='min', verbose=False,
+    )
+    mat_explicit, _ = dist_calc_matrix(
+        (verts, tris), full_cortex, str(annot),
+        exceptions=[], summary='min', verbose=False, centroid=False,
+    )
+    np.testing.assert_allclose(mat_default, mat_explicit, atol=1e-10)

@@ -4,6 +4,36 @@ from surfdist.utils import surf_keep_cortex, translate_src, recort
 from surfdist import load
 
 
+_SUMMARIZERS = {
+    'min': np.min,
+    'mean': np.mean,
+    'median': np.median,
+    'max': np.max,
+}
+
+
+def _summarize(values, summary, axis=None):
+    """Reduce ``values`` along ``axis`` (or globally) using ``summary``."""
+    try:
+        op = _SUMMARIZERS[summary]
+    except KeyError:
+        raise ValueError(
+            f"unknown summary {summary!r}; expected one of "
+            f"{sorted(_SUMMARIZERS)}"
+        )
+    return op(values) if axis is None else op(values, axis=axis)
+
+
+def _centroid_vertex(vertices, source_nodes):
+    """Return a length-1 int32 array of the source-node vertex closest to
+    the 3-D Euclidean centroid of the source set."""
+    src = np.asarray(source_nodes).ravel().astype(np.int32)
+    coords = vertices[src]
+    center = np.mean(coords, axis=0)
+    closest = int(np.argmin(np.linalg.norm(coords - center, axis=1)))
+    return np.array([src[closest]], dtype=np.int32)
+
+
 def dist_calc(surf, cortex, source_nodes, max_distance=None, recortex=True):
     """
     Calculate exact geodesic distance along the cortical surface from a set
@@ -107,56 +137,68 @@ def zone_calc(surf, cortex, src):
     return zone
 
 
-def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall'], summary = 'min', verbose = True):
+def dist_calc_matrix(surf, cortex, labels, exceptions=['Unknown', 'Medial_wall'],
+                     summary='min', verbose=True, centroid=False):
     """
-    Calculate exact geodesic distance along cortical surface from set of source nodes.
-    "labels" specifies the freesurfer label file to use. All values will be used other than those
-    specified in "exceptions" (default: 'Unknown' and 'Medial_Wall').
-    summary defines how the distances are summarized with suppoted values: 'min', 'mean', 'median', 'max'
+    Calculate exact geodesic distance between pairs of labels on a cortical surface.
 
-    returns:
-      dist_mat: symmetrical nxn matrix of minimum distance between pairs of labels
-      rois: label names in order of n
+    Inputs
+    -------
+    surf, cortex : as for ``dist_calc``.
+    labels : str
+        Path to a freesurfer annotation file (e.g. ``lh.aparc.annot``).
+    exceptions : list of str
+        Label names to drop from the matrix (default ``['Unknown', 'Medial_wall']``).
+    summary : str
+        How distances from each region to the vertices of every other region
+        are reduced. One of 'min', 'mean', 'median', 'max'.
+    verbose : bool
+        If True, print progress.
+    centroid : bool
+        If True, each region is sourced from a single vertex - the source-node
+        vertex closest to the region's 3-D centroid - instead of from the full
+        set of region vertices. Useful for parcel-to-parcel center distances.
+
+    Returns
+    -------
+    dist_mat : (n, n) ndarray, distances between pairs of labels.
+    rois : list of label names in the same order as the matrix axes.
     """
-
     cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
 
-    # remove exceptions from label list:
-    label_list = load.get_freesurfer_label(labels, verbose = False)
+    label_list = load.get_freesurfer_label(labels, verbose=False)
     # nibabel returns names as bytes; normalize so string exceptions work
     label_list = [n.decode('utf-8') if isinstance(n, (bytes, bytearray)) else n
                   for n in label_list]
     rs = np.where([a not in exceptions for a in label_list])[0]
     rois = [label_list[r] for r in rs]
     if verbose:
-        print("# of regions: " + str(len(rois)))
+        print(f"# of regions: {len(rois)}")
 
-    # calculate distance from each region to all nodes:
+    source_by_roi = {
+        roi: load.load_freesurfer_label(labels, roi) for roi in rois
+    }
+    if centroid:
+        source_by_roi = {
+            roi: _centroid_vertex(surf[0], src)
+            for roi, src in source_by_roi.items()
+        }
+
     dist_roi = []
     for roi in rois:
-        source_nodes = load.load_freesurfer_label(labels, roi)
-        translated_source_nodes = translate_src(source_nodes, cortex)
-        dist_roi.append(gdist.compute_gdist(cortex_vertices, cortex_triangles,
-                                                source_indices = translated_source_nodes))
+        translated = translate_src(source_by_roi[roi], cortex)
+        dist_roi.append(gdist.compute_gdist(
+            cortex_vertices, cortex_triangles,
+            source_indices=translated,
+        ))
         if verbose:
             print(roi)
     dist_roi = np.array(dist_roi)
 
-    # Calculate min distance per region:
     dist_mat = []
     for roi in rois:
-        source_nodes = load.load_freesurfer_label(labels, roi)
-        translated_source_nodes = translate_src(source_nodes, cortex)
-        if summary == 'min':
-            dist_mat.append(np.min(dist_roi[:,translated_source_nodes], axis = 1))
-        elif summary == 'mean':
-            dist_mat.append(np.mean(dist_roi[:,translated_source_nodes], axis = 1))
-        elif summary == 'median':
-            dist_mat.append(np.median(dist_roi[:,translated_source_nodes], axis = 1))
-        elif summary == 'max':
-            dist_mat.append(np.max(dist_roi[:,translated_source_nodes], axis = 1))
-        else:
-            raise(f'undefined summary: {summary}')
+        translated = translate_src(source_by_roi[roi], cortex)
+        dist_mat.append(_summarize(dist_roi[:, translated], summary, axis=1))
     dist_mat = np.array(dist_mat)
 
     return dist_mat, rois
