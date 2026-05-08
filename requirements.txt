@@ -3,4 +3,4 @@ numpy>=1.19.1
 scipy>=1.5.2
 nibabel>=3.1.1
 tvb-gdist>=2.0.2
-matplotlib>=3.3.0
+matplotlib>=3.5.0

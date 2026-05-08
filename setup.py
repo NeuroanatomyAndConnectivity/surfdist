@@ -1,16 +1,17 @@
-import setuptools 
+import setuptools
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-from pip._internal.req import parse_requirements
+
 def load_requirements(fname):
-    install_reqs = parse_requirements(fname, session=False)
-    try:
-        requirements = [str(ir.req) for ir in install_reqs]
-    except:
-        requirements = [str(ir.requirement) for ir in install_reqs]    
-    return requirements 
+    with open(fname) as fh:
+        return [
+            line.strip()
+            for line in fh
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+
 
 setuptools.setup(
   name = 'surfdist',
@@ -24,6 +25,6 @@ setuptools.setup(
   url = 'https://github.com/NeuroanatomyAndConnectivity/surfdist',
   keywords = ['geodesic', 'distance', 'brain', 'cortex'],
   license='LICENSE.txt',
-  python_requires='>=3.6',  
+  python_requires='>=3.8',
   install_requires=load_requirements("requirements.txt")
 )

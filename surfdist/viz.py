@@ -43,6 +43,7 @@ def viz(coords, faces, stat_map=None,
     '''
 
     import numpy as np
+    import matplotlib
     import matplotlib.pyplot as plt
     import matplotlib.tri as tri
     from mpl_toolkits.mplot3d import Axes3D
@@ -59,8 +60,8 @@ def viz(coords, faces, stat_map=None,
             alpha = 1
 
     # if cmap is given as string, translate to matplotlib cmap
-    if type(cmap) == str:
-        cmap = plt.cm.get_cmap(cmap)
+    if isinstance(cmap, str):
+        cmap = matplotlib.colormaps[cmap]
 
     # initiate figure and 3d axes
     if figsize is not None:

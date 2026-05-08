@@ -60,6 +60,9 @@ def dist_calc_matrix(surf, cortex, labels, exceptions = ['Unknown', 'Medial_wall
 
     # remove exceptions from label list:
     label_list = load.get_freesurfer_label(labels, verbose = False)
+    # nibabel returns names as bytes; normalize so string exceptions work
+    label_list = [n.decode('utf-8') if isinstance(n, (bytes, bytearray)) else n
+                  for n in label_list]
     rs = np.where([a not in exceptions for a in label_list])[0]
     rois = [label_list[r] for r in rs]
     if verbose:

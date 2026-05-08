@@ -21,7 +21,7 @@ def load_freesurfer_label(annot_input, label_name, cortex=None):
     if isinstance(label_name, bytes):
         label_name = label_name.decode('utf-8')
     label_value = names.index(label_name)
-    label_nodes = np.array(np.where(np.in1d(labels, label_value)), dtype=np.int32)
+    label_nodes = np.array(np.where(np.isin(labels, label_value)), dtype=np.int32)
 
     return label_nodes
 

@@ -32,7 +32,7 @@ def triangles_keep_cortex(triangles, cortex):
 
     # for or each face/triangle keep only those that only contain nodes within the list of cortex nodes
     input_shape = triangles.shape
-    triangle_is_in_cortex = np.all(np.reshape(np.in1d(triangles.ravel(), cortex), input_shape), axis=1)
+    triangle_is_in_cortex = np.all(np.reshape(np.isin(triangles.ravel(), cortex), input_shape), axis=1)
 
     cortex_triangles_old = np.array(triangles[triangle_is_in_cortex], dtype=np.int32)
 
@@ -46,7 +46,7 @@ def translate_src(src, cortex):
     """
     Convert source nodes to new surface (without medial wall).
     """
-    src_new = np.array(np.where(np.in1d(cortex, src))[0], dtype=np.int32)
+    src_new = np.array(np.where(np.isin(cortex, src))[0], dtype=np.int32)
 
     return src_new
 
